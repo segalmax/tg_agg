@@ -102,7 +102,7 @@ def get_video_url(request, channel, post_id):
         # Extract video source - look for .mp4 URLs
         video_url = None
         # Primary regex for direct mp4 links
-        primary = re.search(r"(https://[^"']+\.mp4[^"'\s]*)", resp.text)
+        primary = re.search(r'(https://[^"\']+\.mp4[^"\'\s]*)', resp.text)
         if primary:
             video_url = primary.group(1)
         else:

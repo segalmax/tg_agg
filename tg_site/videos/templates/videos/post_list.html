@@ -1,1 +1,285 @@
+{% extends 'videos/base.html' %}
+
+{% block title %}
+    {% if channel %}{{ channel.username }} - Telegram Videos{% else %}Telegram Videos{% endif %}
+{% endblock %}
+
+{% block content %}
+<style>
+body { background: #f5f5f5; margin: 0; padding: 0; }
+.layout { display: flex; max-width: 1400px; margin: 0 auto; }
+.sidebar { 
+    width: 250px; 
+    background: white; 
+    padding: 20px; 
+    margin-right: 20px;
+    height: calc(100vh - 40px);
+    position: sticky;
+    top: 20px;
+    overflow-y: auto;
+}
+.main-content { flex: 1; }
+.post-item { 
+    background: white; 
+    margin-bottom: 2px; 
+    display: table; 
+    width: 100%;
+}
+.post-item:hover { 
+    background: #fafafa; 
+}
+.media-player { 
+    display: table-cell; 
+    width: 320px; 
+    vertical-align: top;
+}
+.media-player video { 
+    width: 320px; 
+    height: 180px; 
+    display: block; 
+    background: #000;
+}
+.post-info { 
+    display: table-cell; 
+    padding: 12px; 
+    vertical-align: top;
+}
+.post-text { 
+    margin-bottom: 8px; 
+    font-size: 14px; 
+    line-height: 1.4;
+}
+.post-meta { 
+    color: #666; 
+    font-size: 13px; 
+    margin-bottom: 6px;
+}
+.post-links a { 
+    color: #0088cc; 
+    text-decoration: none; 
+    font-size: 13px;
+    margin-left: 10px;
+}
+.post-links a:hover { 
+    text-decoration: underline; 
+}
+.filter-section {
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #eee;
+}
+.filter-section:last-child { border-bottom: none; }
+.filter-section h3 {
+    font-size: 14px;
+    margin: 0 0 10px 0;
+    color: #333;
+}
+.filter-section label {
+    display: block;
+    font-size: 13px;
+    margin-bottom: 5px;
+    color: #666;
+}
+.filter-section input, .filter-section select {
+    width: 100%;
+    padding: 6px 8px;
+    font-size: 13px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    margin-bottom: 10px;
+}
+.filter-section button {
+    width: 100%;
+    padding: 8px;
+    background: #0088cc;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 13px;
+}
+.filter-section button:hover {
+    background: #006aa3;
+}
+.clear-filters {
+    background: #999 !important;
+    margin-top: 5px;
+}
+.clear-filters:hover {
+    background: #777 !important;
+}
+.search-form { 
+    background: white; 
+    padding: 20px; 
+    margin-bottom: 20px;
+}
+.search-form input { 
+    padding: 8px 12px; 
+    font-size: 14px; 
+    border: 1px solid #ddd; 
+    border-radius: 4px; 
+    width: 400px;
+}
+.search-form button { 
+    padding: 8px 16px; 
+    font-size: 14px; 
+    background: #0088cc; 
+    color: white; 
+    border: none; 
+    border-radius: 4px; 
+    cursor: pointer;
+}
+.search-form button:hover { 
+    background: #006aa3; 
+}
+.pagination { 
+    background: white; 
+    padding: 15px; 
+    margin-top: 20px; 
+    text-align: center;
+}
+.pagination a { 
+    color: #0088cc; 
+    text-decoration: none; 
+    margin: 0 10px;
+}
+.pagination a:hover { 
+    text-decoration: underline; 
+}
+.pagination .current { 
+    margin: 0 15px; 
+    color: #666;
+}
+</style>
+
+<div class="layout">
+    <div class="sidebar">
+        <form method="get" action="/">
+            <div class="filter-section">
+                <h3>🔍 Search</h3>
+                <input type="text" name="q" placeholder="Search text..." value="{{ search_query|default:'' }}">
+            </div>
+            
+            <div class="filter-section">
+                <h3>📺 Channel</h3>
+                <select name="channel">
+                    <option value="">All Channels</option>
+                    {% for ch in channels %}
+                    <option value="{{ ch.username }}" {% if filters.channel == ch.username %}selected{% endif %}>
+                        {{ ch.username }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-section">
+                <h3>🎬 Media Type</h3>
+                <select name="media">
+                    <option value="">All Posts</option>
+                    <option value="video" {% if filters.media == 'video' %}selected{% endif %}>Videos Only</option>
+                    <option value="photo" {% if filters.media == 'photo' %}selected{% endif %}>Photos Only</option>
+                    <option value="all_media" {% if filters.media == 'all_media' %}selected{% endif %}>All Media</option>
+                </select>
+            </div>
+            
+            <div class="filter-section">
+                <h3>👁 Views</h3>
+                <label>Minimum Views</label>
+                <input type="number" name="min_views" placeholder="e.g. 10000" value="{{ filters.min_views|default:'' }}">
+            </div>
+            
+            <div class="filter-section">
+                <h3>📅 Date Range</h3>
+                <label>From</label>
+                <input type="date" name="date_from" value="{{ filters.date_from|default:'' }}">
+                <label>To</label>
+                <input type="date" name="date_to" value="{{ filters.date_to|default:'' }}">
+            </div>
+            
+            <div class="filter-section">
+                <h3>⬆️ Sort By</h3>
+                <select name="sort">
+                    <option value="-date" {% if filters.sort == '-date' %}selected{% endif %}>Newest First</option>
+                    <option value="date" {% if filters.sort == 'date' %}selected{% endif %}>Oldest First</option>
+                    <option value="-views" {% if filters.sort == '-views' %}selected{% endif %}>Most Views</option>
+                    <option value="views" {% if filters.sort == 'views' %}selected{% endif %}>Least Views</option>
+                    <option value="-forwards" {% if filters.sort == '-forwards' %}selected{% endif %}>Most Forwards</option>
+                    <option value="-replies" {% if filters.sort == '-replies' %}selected{% endif %}>Most Replies</option>
+                </select>
+            </div>
+            
+            <button type="submit">Apply Filters</button>
+            <button type="button" class="clear-filters" onclick="window.location.href='/'">Clear All</button>
+        </form>
+    </div>
+    
+    <div class="main-content">
+        {% if channel %}
+            <h2 style="background: white; padding: 15px; margin-bottom: 20px;">Channel: {{ channel.username }}</h2>
+        {% endif %}
+    
+    {% for post in page_obj %}
+        <div class="post-item">
+            {% if post.video_data %}
+            <div class="media-player">
+                <video controls preload="none" data-channel="{{ post.channel.username }}" data-post="{{ post.telegram_id }}">
+                    <source src="" type="video/mp4">
+                </video>
+            </div>
+            {% endif %}
+            <div class="post-info">
+                <div class="post-text">{{ post.text }}</div>
+                <div class="post-meta">
+                    👁 {{ post.views }} • 
+                    ⏱ {% if post.video_data.duration %}{{ post.video_data.duration }}s{% else %}--{% endif %} • 
+                    📅 {{ post.date|date:"d/m/Y" }}
+                </div>
+                <div class="post-links">
+                    <a href="{{ post.link }}" target="_blank">פתח בטלגרם →</a>
+                </div>
+            </div>
+        </div>
+    {% empty %}
+        <p style="background: white; padding: 20px;">No posts found.</p>
+    {% endfor %}
+    
+    <script>
+    document.querySelectorAll('video[data-channel]').forEach(function(video) {
+        const channel = video.dataset.channel;
+        const postId = video.dataset.post;
+        
+        fetch(`/api/video/${channel}/${postId}/`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.video) {
+                    video.querySelector('source').src = data.video;
+                    video.load();
+                }
+                if (data.thumbnail) {
+                    video.poster = data.thumbnail;
+                }
+            })
+            .catch(err => {
+                console.error(`Failed to load video ${channel}/${postId}:`, err);
+            });
+    });
+    </script>
+    
+    <div class="pagination">
+        {% if page_obj.has_previous %}
+            <a href="?page=1{{ query_string }}">First</a>
+            <a href="?page={{ page_obj.previous_page_number }}{{ query_string }}">Previous</a>
+        {% endif %}
+        
+        <span class="current">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{{ query_string }}">Next</a>
+            <a href="?page={{ page_obj.paginator.num_pages }}{{ query_string }}">Last</a>
+        {% endif %}
+    </div>
+    
+    </div><!-- main-content -->
+</div><!-- layout -->
+{% endblock %}
 

@@ -33,11 +33,11 @@ body { background: #f5f5f5; margin: 0; padding: 0; }
     width: 320px; 
     vertical-align: top;
 }
-.media-player video { 
+.media-player iframe { 
     width: 320px; 
-    height: 180px; 
+    height: 400px; 
     display: block; 
-    background: #000;
+    border: none;
 }
 .post-info { 
     display: table-cell; 
@@ -222,9 +222,12 @@ body { background: #f5f5f5; margin: 0; padding: 0; }
         <div class="post-item">
             {% if post.video_data %}
             <div class="media-player">
-                <video controls preload="none" data-channel="{{ post.channel.username }}" data-post="{{ post.telegram_id }}">
-                    <source src="" type="video/mp4">
-                </video>
+                <iframe src="https://t.me/{{ post.channel.username }}/{{ post.telegram_id }}?embed=1&mode=tme" 
+                        width="320" 
+                        height="400" 
+                        frameborder="0" 
+                        scrolling="no"
+                        style="overflow:hidden;"></iframe>
             </div>
             {% endif %}
             <div class="post-info">
@@ -242,28 +245,6 @@ body { background: #f5f5f5; margin: 0; padding: 0; }
     {% empty %}
         <p style="background: white; padding: 20px;">No posts found.</p>
     {% endfor %}
-    
-    <script>
-    document.querySelectorAll('video[data-channel]').forEach(function(video) {
-        const channel = video.dataset.channel;
-        const postId = video.dataset.post;
-        
-        fetch(`/api/video/${channel}/${postId}/`)
-            .then(r => r.json())
-            .then(data => {
-                if (data.video) {
-                    video.querySelector('source').src = data.video;
-                    video.load();
-                }
-                if (data.thumbnail) {
-                    video.poster = data.thumbnail;
-                }
-            })
-            .catch(err => {
-                console.error(`Failed to load video ${channel}/${postId}:`, err);
-            });
-    });
-    </script>
     
     <div class="pagination">
         {% if page_obj.has_previous %}

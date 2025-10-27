@@ -93,7 +93,7 @@ def get_video_url(request, channel, post_id):
     """Fetch video URL from Telegram embed page"""
     try:
         embed_url = f"https://t.me/{channel}/{post_id}?embed=1"
-        resp = requests.get(embed_url, timeout=5)
+        resp = requests.get(embed_url, timeout=10)
         
         # Extract thumbnail
         thumb_match = re.search(r"background-image:url\('([^']+)'\)", resp.text)
@@ -103,9 +103,12 @@ def get_video_url(request, channel, post_id):
         video_match = re.search(r'(https://[^"\']+\.mp4[^"\'\s]*)', resp.text)
         video_url = video_match.group(1) if video_match else None
         
+        print(f"Video fetch for {channel}/{post_id}: video={bool(video_url)}, thumb={bool(thumbnail)}")
+        
         return JsonResponse({
             'thumbnail': thumbnail,
             'video': video_url
         })
-    except:
+    except Exception as e:
+        print(f"Error fetching video {channel}/{post_id}: {str(e)}")
         return JsonResponse({'error': 'Failed to fetch video'}, status=500)

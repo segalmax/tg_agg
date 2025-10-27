@@ -258,6 +258,9 @@ body { background: #f5f5f5; margin: 0; padding: 0; }
                 if (data.thumbnail) {
                     video.poster = data.thumbnail;
                 }
+            })
+            .catch(err => {
+                console.error(`Failed to load video ${channel}/${postId}:`, err);
             });
     });
     </script>

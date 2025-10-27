@@ -100,8 +100,21 @@ def get_video_url(request, channel, post_id):
         thumbnail = thumb_match.group(1) if thumb_match else None
         
         # Extract video source - look for .mp4 URLs
-        video_match = re.search(r'(https://[^"\']+\.mp4[^"\'\s]*)', resp.text)
-        video_url = video_match.group(1) if video_match else None
+        video_url = None
+        # Primary regex for direct mp4 links
+        primary = re.search(r"(https://[^"']+\.mp4[^"'\s]*)", resp.text)
+        if primary:
+            video_url = primary.group(1)
+        else:
+            # Fallback: look for <source src="...mp4">
+            source_tag = re.search(r'<source[^>]+src="([^"\s]*\.mp4[^"\s]*)"', resp.text)
+            if source_tag:
+                video_url = source_tag.group(1)
+            else:
+                # Fallback: look for <video src="...mp4">
+                video_inline = re.search(r'<video[^>]+src="([^"\s]*\.mp4[^"\s]*)"', resp.text)
+                if video_inline:
+                    video_url = video_inline.group(1)
         
         print(f"Video fetch for {channel}/{post_id}: video={bool(video_url)}, thumb={bool(thumbnail)}")
         

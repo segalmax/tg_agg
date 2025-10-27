@@ -21,6 +21,7 @@ django.setup()
 
 from videos.models import Channel, Post
 from telethon.sync import TelegramClient
+from telethon.sessions import StringSession
 from telethon.tl.types import Message
 
 # Configuration
@@ -109,7 +110,16 @@ def monitor_loop():
     print("=" * 70)
     
     # Initialize Telegram client
-    client = TelegramClient("session", api_id, api_hash)
+    # Use session string (Railway) or session file (local)
+    session_string = os.getenv("SESSION_STRING")
+    if session_string:
+        print("🔑 Using session string from environment")
+        session = StringSession(session_string)
+    else:
+        print("🔑 Using session file (session.session)")
+        session = "session"
+    
+    client = TelegramClient(session, api_id, api_hash)
     
     with client:
         iteration = 0

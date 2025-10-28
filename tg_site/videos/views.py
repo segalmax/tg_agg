@@ -96,34 +96,66 @@ def get_video_url(request, channel, post_id):
     """Fetch video URL from Telegram embed page"""
     try:
         embed_url = f"https://t.me/{channel}/{post_id}?embed=1"
-        resp = requests.get(embed_url, timeout=10)
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+        resp = requests.get(embed_url, timeout=10, headers=headers)
         
         # Extract thumbnail
-        thumb_match = re.search(r"background-image:url\('([^']+)'\)", resp.text)
-        thumbnail = thumb_match.group(1) if thumb_match else None
+        thumb_patterns = [
+            r"background-image:url\('([^']+)'\)",
+            r'poster["\']?\s*[:=]\s*["\']([^"\']+)["\']',
+            r'thumb["\']?\s*[:=]\s*["\']([^"\']+)["\']',
+        ]
+        thumbnail = None
+        for pattern in thumb_patterns:
+            match = re.search(pattern, resp.text)
+            if match:
+                thumbnail = match.group(1)
+                if thumbnail.startswith('//'):
+                    thumbnail = 'https:' + thumbnail
+                break
         
-        # Extract video source - try multiple patterns
+        # Extract video source - comprehensive patterns
         video_url = None
         
         patterns = [
-            r'"file":"([^"]+\.mp4[^"]*)"',
-            r'src\s*[:=]\s*["\']([^"\']*\.mp4[^"\']*)["\']',
-            r'(https?://[^"\'<>\s]+\.mp4[^"\'<>\s]*)',
-            r'video_src["\']?\s*[:=]\s*["\']([^"\']+\.mp4[^"\']*)',
+            # JSON-style properties
+            r'"file"\s*:\s*"([^"]+\.mp4[^"]*)"',
+            r'"video"\s*:\s*"([^"]+\.mp4[^"]*)"',
+            r'"url"\s*:\s*"([^"]+\.mp4[^"]*)"',
+            r'"src"\s*:\s*"([^"]+\.mp4[^"]*)"',
+            
+            # HTML attributes
+            r'<video[^>]+src\s*=\s*["\']([^"\']+\.mp4[^"\']*)["\']',
+            r'<source[^>]+src\s*=\s*["\']([^"\']+\.mp4[^"\']*)["\']',
+            r'src\s*=\s*["\']([^"\']+\.mp4[^"\']*)["\']',
+            
+            # JavaScript variable assignments
+            r'videoSrc\s*=\s*["\']([^"\']+\.mp4[^"\']*)["\']',
+            r'video_src\s*=\s*["\']([^"\']+\.mp4[^"\']*)["\']',
+            
+            # Direct URL patterns (broad, last resort)
+            r'(https?://[^\s"\'<>]+video[^\s"\'<>]*\.mp4[^\s"\'<>]*)',
+            r'(//[^\s"\'<>]+telegram[^\s"\'<>]*\.mp4[^\s"\'<>]*)',
+            r'(https?://[^\s"\'<>]+\.mp4(?:\?[^\s"\'<>]*)?)',
         ]
         
         for pattern in patterns:
             match = re.search(pattern, resp.text, re.IGNORECASE)
             if match:
                 video_url = match.group(1)
+                # Fix protocol-relative URLs
                 if video_url.startswith('//'):
                     video_url = 'https:' + video_url
+                # Unescape if needed
+                video_url = video_url.replace('\\/', '/')
                 break
         
         if not video_url:
             print(f"Video fetch FAILED for {channel}/{post_id} - no video found")
         else:
-            print(f"Video fetch OK for {channel}/{post_id}")
+            print(f"Video fetch OK for {channel}/{post_id}: {video_url[:80]}")
         
         return JsonResponse({
             'thumbnail': thumbnail,

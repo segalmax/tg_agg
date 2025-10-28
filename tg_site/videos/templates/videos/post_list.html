@@ -38,16 +38,56 @@ body { background: #f5f5f5; margin: 0; padding: 0; }
     height: 180px; 
     display: block; 
     background: #000;
+    pointer-events: auto;
+    position: relative;
+    z-index: 1;
 }
 .post-info { 
     display: table-cell; 
     padding: 12px; 
     vertical-align: top;
+    max-height: 180px;
+    box-sizing: border-box;
 }
 .post-text { 
-    margin-bottom: 8px; 
     font-size: 14px; 
     line-height: 1.4;
+    max-height: 90px;
+    overflow: hidden;
+    margin-bottom: 6px;
+    position: relative;
+    word-wrap: break-word;
+}
+.post-text code {
+    background: #f4f4f4;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: monospace;
+    font-size: 13px;
+}
+.post-text strong {
+    font-weight: bold;
+}
+.post-text em {
+    font-style: italic;
+}
+.post-text.truncated::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 100%;
+    height: 25px;
+    background: linear-gradient(transparent, white);
+    pointer-events: none;
+}
+.see-more-btn {
+    color: #0088cc;
+    cursor: pointer;
+    font-size: 13px;
+    text-decoration: underline;
+    display: inline-block;
+    margin-top: 4px;
 }
 .post-meta { 
     color: #666; 
@@ -150,19 +190,72 @@ body { background: #f5f5f5; margin: 0; padding: 0; }
     margin: 0 15px; 
     color: #666;
 }
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+.modal.active {
+    display: flex;
+}
+.modal-content {
+    background: white;
+    padding: 30px;
+    max-width: 800px;
+    max-height: 80vh;
+    overflow-y: auto;
+    border-radius: 8px;
+    position: relative;
+}
+#modalText {
+    font-size: 15px;
+    line-height: 1.6;
+    word-wrap: break-word;
+}
+#modalText code {
+    background: #f4f4f4;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: monospace;
+    font-size: 14px;
+}
+#modalText strong {
+    font-weight: bold;
+}
+#modalText em {
+    font-style: italic;
+}
+.modal-close {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 28px;
+    cursor: pointer;
+    color: #666;
+}
+.modal-close:hover {
+    color: #000;
+}
 </style>
 
 <div class="layout">
     <div class="sidebar">
-        <form method="get" action="/">
+        <form method="get" action="/" id="filterForm">
             <div class="filter-section">
                 <h3>🔍 Search</h3>
-                <input type="text" name="q" placeholder="Search text..." value="{{ search_query|default:'' }}">
+                <input type="text" name="q" id="searchInput" placeholder="Search text..." value="{{ search_query|default:'' }}">
             </div>
             
             <div class="filter-section">
                 <h3>📺 Channel</h3>
-                <select name="channel">
+                <select name="channel" class="auto-submit">
                     <option value="">All Channels</option>
                     {% for ch in channels %}
                     <option value="{{ ch.username }}" {% if filters.channel == ch.username %}selected{% endif %}>
@@ -174,7 +267,7 @@ body { background: #f5f5f5; margin: 0; padding: 0; }
             
             <div class="filter-section">
                 <h3>🎬 Media Type</h3>
-                <select name="media">
+                <select name="media" class="auto-submit">
                     <option value="">All Posts</option>
                     <option value="video" {% if filters.media == 'video' %}selected{% endif %}>Videos Only</option>
                     <option value="photo" {% if filters.media == 'photo' %}selected{% endif %}>Photos Only</option>
@@ -185,20 +278,20 @@ body { background: #f5f5f5; margin: 0; padding: 0; }
             <div class="filter-section">
                 <h3>👁 Views</h3>
                 <label>Minimum Views</label>
-                <input type="number" name="min_views" placeholder="e.g. 10000" value="{{ filters.min_views|default:'' }}">
+                <input type="number" name="min_views" class="auto-submit" placeholder="e.g. 10000" value="{{ filters.min_views|default:'' }}">
             </div>
             
             <div class="filter-section">
                 <h3>📅 Date Range</h3>
                 <label>From</label>
-                <input type="date" name="date_from" value="{{ filters.date_from|default:'' }}">
+                <input type="date" name="date_from" class="auto-submit" value="{{ filters.date_from|default:'' }}">
                 <label>To</label>
-                <input type="date" name="date_to" value="{{ filters.date_to|default:'' }}">
+                <input type="date" name="date_to" class="auto-submit" value="{{ filters.date_to|default:'' }}">
             </div>
             
             <div class="filter-section">
                 <h3>⬆️ Sort By</h3>
-                <select name="sort">
+                <select name="sort" class="auto-submit">
                     <option value="-date" {% if filters.sort == '-date' %}selected{% endif %}>Newest First</option>
                     <option value="date" {% if filters.sort == 'date' %}selected{% endif %}>Oldest First</option>
                     <option value="-views" {% if filters.sort == '-views' %}selected{% endif %}>Most Views</option>
@@ -208,7 +301,6 @@ body { background: #f5f5f5; margin: 0; padding: 0; }
                 </select>
             </div>
             
-            <button type="submit">Apply Filters</button>
             <button type="button" class="clear-filters" onclick="window.location.href='/'">Clear All</button>
         </form>
     </div>
@@ -228,14 +320,16 @@ body { background: #f5f5f5; margin: 0; padding: 0; }
             </div>
             {% endif %}
             <div class="post-info">
-                <div class="post-text">{{ post.text }}</div>
                 <div class="post-meta">
                     👁 {{ post.views }} • 
                     ⏱ {% if post.video_data.duration %}{{ post.video_data.duration }}s{% else %}--{% endif %} • 
-                    📅 {{ post.date|date:"d/m/Y" }}
+                    <span class="post-datetime" data-datetime="{{ post.date.isoformat }}"></span> • 
+                    ↪️ {{ post.forwards }} • 
+                    💬 {{ post.replies }}
                 </div>
+                <div class="post-text" data-full-text="{{ post.text|escape }}">{{ post.text }}</div>
                 <div class="post-links">
-                    <a href="{{ post.link }}" target="_blank">פתח בטלגרם →</a>
+                    <a href="{{ post.link }}" target="_blank">Show in Telegram →</a>
                 </div>
             </div>
         </div>
@@ -244,6 +338,95 @@ body { background: #f5f5f5; margin: 0; padding: 0; }
     {% endfor %}
     
     <script>
+    // Auto-submit filters
+    const filterForm = document.getElementById('filterForm');
+    if (filterForm) {
+        document.querySelectorAll('.auto-submit').forEach(el => {
+            el.addEventListener('change', () => {
+                filterForm.submit();
+            });
+        });
+    }
+    
+    // Search on Enter
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput && filterForm) {
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                filterForm.submit();
+            }
+        });
+    }
+    
+    // Format datetime in client timezone
+    function formatDateTime(isoString) {
+        const date = new Date(isoString);
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+        return `📅 ${day}/${month}/${year} • 🕒 ${hours}:${minutes}:${seconds}`;
+    }
+    
+    document.querySelectorAll('.post-datetime').forEach(el => {
+        el.textContent = formatDateTime(el.dataset.datetime);
+    });
+    
+    // Parse Telegram markdown
+    function parseTelegramMarkdown(text) {
+        return text
+            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.+?)\*/g, '<em>$1</em>')
+            .replace(/`(.+?)`/g, '<code>$1</code>')
+            .replace(/\n/g, '<br>');
+    }
+    
+    // Handle text overflow and see more
+    document.querySelectorAll('.post-text').forEach(el => {
+        const fullText = el.dataset.fullText;
+        el.innerHTML = parseTelegramMarkdown(fullText);
+        
+        // Check if entire post-info section exceeds video height (180px)
+        const postInfo = el.parentNode;
+        if (postInfo.scrollHeight > 180) {
+            el.classList.add('truncated');
+            const seeMoreBtn = document.createElement('span');
+            seeMoreBtn.className = 'see-more-btn';
+            seeMoreBtn.textContent = 'See more';
+            seeMoreBtn.onclick = () => showModal(fullText);
+            el.parentNode.insertBefore(seeMoreBtn, el.nextSibling);
+        }
+    });
+    
+    function showModal(text) {
+        const modalText = document.getElementById('modalText');
+        const textModal = document.getElementById('textModal');
+        if (modalText && textModal) {
+            modalText.innerHTML = parseTelegramMarkdown(text);
+            textModal.classList.add('active');
+        }
+    }
+    
+    function closeModal() {
+        const textModal = document.getElementById('textModal');
+        if (textModal) {
+            textModal.classList.remove('active');
+        }
+    }
+    
+    const textModal = document.getElementById('textModal');
+    if (textModal) {
+        textModal.addEventListener('click', (e) => {
+            if (e.target.id === 'textModal') {
+                closeModal();
+            }
+        });
+    }
+    
+    // Load videos
     document.querySelectorAll('video[data-channel]').forEach(function(video) {
         const channel = video.dataset.channel;
         const postId = video.dataset.post;
@@ -281,5 +464,13 @@ body { background: #f5f5f5; margin: 0; padding: 0; }
     
     </div><!-- main-content -->
 </div><!-- layout -->
+
+<div class="modal" id="textModal">
+    <div class="modal-content">
+        <span class="modal-close" onclick="closeModal()">&times;</span>
+        <div id="modalText"></div>
+    </div>
+</div>
+
 {% endblock %}
 

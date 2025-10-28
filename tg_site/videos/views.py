@@ -102,24 +102,28 @@ def get_video_url(request, channel, post_id):
         thumb_match = re.search(r"background-image:url\('([^']+)'\)", resp.text)
         thumbnail = thumb_match.group(1) if thumb_match else None
         
-        # Extract video source - look for .mp4 URLs
+        # Extract video source - try multiple patterns
         video_url = None
-        # Primary regex for direct mp4 links
-        primary = re.search(r'(https://[^"\']+\.mp4[^"\'\s]*)', resp.text)
-        if primary:
-            video_url = primary.group(1)
-        else:
-            # Fallback: look for <source src="...mp4">
-            source_tag = re.search(r'<source[^>]+src="([^"\s]*\.mp4[^"\s]*)"', resp.text)
-            if source_tag:
-                video_url = source_tag.group(1)
-            else:
-                # Fallback: look for <video src="...mp4">
-                video_inline = re.search(r'<video[^>]+src="([^"\s]*\.mp4[^"\s]*)"', resp.text)
-                if video_inline:
-                    video_url = video_inline.group(1)
         
-        print(f"Video fetch for {channel}/{post_id}: video={bool(video_url)}, thumb={bool(thumbnail)}")
+        patterns = [
+            r'"file":"([^"]+\.mp4[^"]*)"',
+            r'src\s*[:=]\s*["\']([^"\']*\.mp4[^"\']*)["\']',
+            r'(https?://[^"\'<>\s]+\.mp4[^"\'<>\s]*)',
+            r'video_src["\']?\s*[:=]\s*["\']([^"\']+\.mp4[^"\']*)',
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, resp.text, re.IGNORECASE)
+            if match:
+                video_url = match.group(1)
+                if video_url.startswith('//'):
+                    video_url = 'https:' + video_url
+                break
+        
+        if not video_url:
+            print(f"Video fetch FAILED for {channel}/{post_id} - no video found")
+        else:
+            print(f"Video fetch OK for {channel}/{post_id}")
         
         return JsonResponse({
             'thumbnail': thumbnail,

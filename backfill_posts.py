@@ -132,7 +132,8 @@ def backfill(channel_username: str, since_date: datetime, stop_on_existing: bool
                 created = save_message(msg, channel)
                 if created:
                     total_new += 1
-                    print(f" + {msg.id} | {msg.date.date()} | {msg.text[:40]}")
+                    text_preview = (msg.text or "")[:40]
+                    print(f" + {msg.id} | {msg.date.date()} | {text_preview}")
                 elif stop_on_existing:
                     print("✓ Encountered first existing post. Stopping.")
                     return

@@ -269,7 +269,7 @@ body { background: #f5f5f5; margin: 0; padding: 0; }
                 <h3>🎬 Media Type</h3>
                 <select name="media" class="auto-submit">
                     <option value="">All Posts</option>
-                    <option value="video" {% if filters.media == 'video' %}selected{% endif %}>Videos Only</option>
+                    <option value="video" {% if filters.media == 'video' or not filters.media %}selected{% endif %}>Videos Only</option>
                     <option value="photo" {% if filters.media == 'photo' %}selected{% endif %}>Photos Only</option>
                     <option value="all_media" {% if filters.media == 'all_media' %}selected{% endif %}>All Media</option>
                 </select>

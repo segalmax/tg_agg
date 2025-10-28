@@ -19,6 +19,9 @@ def home(request):
         posts = posts.filter(channel__username=channel_filter)
     
     media_filter = request.GET.get('media', '').strip()
+    if not media_filter:
+        media_filter = 'video'
+    
     if media_filter == 'video':
         posts = posts.filter(video_data__isnull=False)
     elif media_filter == 'photo':

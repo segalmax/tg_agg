@@ -386,18 +386,22 @@ body { background: #f5f5f5; margin: 0; padding: 0; }
     
     // Handle text overflow and see more
     document.querySelectorAll('.post-text').forEach(el => {
-        const fullText = el.dataset.fullText;
-        el.innerHTML = parseTelegramMarkdown(fullText);
-        
-        // Check if entire post-info section exceeds video height (180px)
-        const postInfo = el.parentNode;
-        if (postInfo.scrollHeight > 180) {
-            el.classList.add('truncated');
-            const seeMoreBtn = document.createElement('span');
-            seeMoreBtn.className = 'see-more-btn';
-            seeMoreBtn.textContent = 'See more';
-            seeMoreBtn.onclick = () => showModal(fullText);
-            el.parentNode.insertBefore(seeMoreBtn, el.nextSibling);
+        try {
+            const fullText = el.dataset.fullText || '';
+            el.innerHTML = parseTelegramMarkdown(fullText);
+            
+            // Check if entire post-info section exceeds video height (180px)
+            const postInfo = el.parentNode;
+            if (postInfo && postInfo.scrollHeight > 180) {
+                el.classList.add('truncated');
+                const seeMoreBtn = document.createElement('span');
+                seeMoreBtn.className = 'see-more-btn';
+                seeMoreBtn.textContent = 'See more';
+                seeMoreBtn.onclick = () => showModal(fullText);
+                el.parentNode.insertBefore(seeMoreBtn, el.nextSibling);
+            }
+        } catch (err) {
+            console.error('Error processing post text:', err);
         }
     });
     

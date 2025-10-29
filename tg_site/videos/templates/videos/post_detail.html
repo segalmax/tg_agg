@@ -52,15 +52,23 @@
     <div class="row justify-content-center">
         <div class="col-12 col-lg-10 col-xl-8">
             <div class="card">
-                <div class="card-body p-0">
+                <div class="card-body p-0 position-relative">
                     {% if post.video_data %}
                     <video class="video-player" 
                            controls 
                            preload="metadata" 
                            data-channel="{{ post.channel.username }}" 
-                           data-post="{{ post.telegram_id }}">
+                           data-post="{{ post.telegram_id }}"
+                           id="mainVideo">
                         <source src="" type="video/mp4">
                     </video>
+                    <div id="videoFallback" class="video-player bg-dark d-none align-items-center justify-content-center text-white flex-column p-4" style="display: none !important;">
+                        <h4 class="mb-3">📹 Video too large to embed</h4>
+                        <p class="text-center mb-3">Telegram doesn't allow embedding large videos</p>
+                        <a href="{{ post.link }}" target="_blank" class="btn btn-primary btn-lg">
+                            Open in Telegram to Watch
+                        </a>
+                    </div>
                     {% else %}
                     <div class="video-player bg-secondary d-flex align-items-center justify-content-center text-white">
                         <h3>📷 Photo Post</h3>
@@ -147,6 +155,7 @@
 <script>
 // Load video
 const video = document.querySelector('video[data-channel]');
+const videoFallback = document.getElementById('videoFallback');
 if (video) {
     const channel = video.dataset.channel;
     const postId = video.dataset.post;
@@ -157,12 +166,24 @@ if (video) {
             if (data.video) {
                 video.querySelector('source').src = data.video;
                 video.load();
+            } else if (videoFallback) {
+                // Video too large or unavailable - show fallback
+                video.style.display = 'none';
+                videoFallback.classList.remove('d-none');
+                videoFallback.style.display = 'flex';
             }
             if (data.thumbnail) {
                 video.poster = data.thumbnail;
             }
         })
-        .catch(err => console.error(`Failed to load video:`, err));
+        .catch(err => {
+            console.error(`Failed to load video:`, err);
+            if (videoFallback) {
+                video.style.display = 'none';
+                videoFallback.classList.remove('d-none');
+                videoFallback.style.display = 'flex';
+            }
+        });
 }
 
 // Format datetime

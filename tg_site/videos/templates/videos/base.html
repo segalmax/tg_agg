@@ -5,36 +5,70 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Telegram Videos{% endblock %}</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📺</text></svg>">
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; line-height: 1.6; padding: 20px; max-width: 1200px; margin: 0 auto; }
-        header { margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #333; }
-        h1 { margin-bottom: 10px; }
-        nav a { margin-right: 15px; text-decoration: none; color: #0066cc; }
-        nav a:hover { text-decoration: underline; }
-        .search-form { margin: 20px 0; }
-        .search-form input[type="text"] { padding: 8px; width: 300px; font-size: 14px; }
-        .search-form button { padding: 8px 15px; font-size: 14px; cursor: pointer; }
-        .post-card { border: 1px solid #ddd; padding: 15px; margin-bottom: 15px; border-radius: 5px; }
-        .post-card h3 { margin-bottom: 10px; }
-        .post-meta { color: #666; font-size: 14px; margin-bottom: 10px; }
-        .post-text { margin: 10px 0; }
-        .pagination { margin: 20px 0; }
-        .pagination a { margin: 0 5px; padding: 5px 10px; text-decoration: none; color: #0066cc; border: 1px solid #ddd; }
-        .pagination .current { font-weight: bold; padding: 5px 10px; }
-        iframe { border: 1px solid #ddd; margin-top: 20px; }
+        body { background-color: #f8f9fa; }
+        .video-thumbnail { 
+            width: 100%; 
+            height: 180px; 
+            object-fit: cover; 
+            background: #000;
+        }
+        .video-card { 
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+        .video-card:hover { 
+            transform: translateY(-5px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .navbar-brand { 
+            font-weight: bold;
+        }
+        .btn-filter {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            border-radius: 50px;
+            padding: 12px 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        @media (min-width: 768px) {
+            .btn-filter { display: none; }
+        }
     </style>
+    {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <header>
-        <h1><a href="/" style="text-decoration: none; color: black;">Telegram Videos</a></h1>
-        <nav>
-            <a href="/">Home</a>
-            <a href="/admin/">Admin</a>
-        </nav>
-    </header>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">📺 Telegram Videos</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin/">Admin</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
     
     {% block content %}{% endblock %}
+    
+    <!-- Bootstrap 5 JS Bundle (includes Popper) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    {% block extra_js %}{% endblock %}
 </body>
 </html>
 

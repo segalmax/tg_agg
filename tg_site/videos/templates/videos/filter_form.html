@@ -1,0 +1,70 @@
+<form method="get" action="/" id="filterForm">
+    <!-- Search -->
+    <div class="mb-3">
+        <label class="form-label fw-bold">🔍 Search</label>
+        <input type="text" name="q" class="form-control form-control-sm" placeholder="Search text..." value="{{ search_query|default:'' }}">
+    </div>
+    
+    <!-- Channel -->
+    <div class="mb-3">
+        <label class="form-label fw-bold">📺 Channel</label>
+        <select name="channel" class="form-select form-select-sm auto-submit">
+            <option value="">All Channels</option>
+            {% for ch in channels %}
+            <option value="{{ ch.username }}" {% if filters.channel == ch.username %}selected{% endif %}>
+                {{ ch.username }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+    
+    <!-- Media Type -->
+    <div class="mb-3">
+        <label class="form-label fw-bold">🎬 Media Type</label>
+        <select name="media" class="form-select form-select-sm auto-submit">
+            <option value="">All Posts</option>
+            <option value="video" {% if filters.media == 'video' or not filters.media %}selected{% endif %}>Videos Only</option>
+            <option value="photo" {% if filters.media == 'photo' %}selected{% endif %}>Photos Only</option>
+            <option value="all_media" {% if filters.media == 'all_media' %}selected{% endif %}>All Media</option>
+        </select>
+    </div>
+    
+    <!-- Date Range -->
+    <div class="mb-3">
+        <label class="form-label fw-bold">📅 Date Range</label>
+        <label class="form-label form-label-sm">From</label>
+        <input type="date" name="date_from" class="form-control form-control-sm auto-submit" value="{{ filters.date_from|default:'' }}">
+        <label class="form-label form-label-sm mt-2">To</label>
+        <input type="date" name="date_to" class="form-control form-control-sm auto-submit" value="{{ filters.date_to|default:'' }}">
+    </div>
+    
+    <!-- Sort By -->
+    <div class="mb-3">
+        <label class="form-label fw-bold">⬆️ Sort By</label>
+        <select name="sort" class="form-select form-select-sm auto-submit">
+            <option value="-date" {% if filters.sort == '-date' %}selected{% endif %}>Newest First</option>
+            <option value="date" {% if filters.sort == 'date' %}selected{% endif %}>Oldest First</option>
+            <option value="-views" {% if filters.sort == '-views' %}selected{% endif %}>Most Views</option>
+            <option value="views" {% if filters.sort == 'views' %}selected{% endif %}>Least Views</option>
+            <option value="-forwards" {% if filters.sort == '-forwards' %}selected{% endif %}>Most Forwards</option>
+            <option value="-replies" {% if filters.sort == '-replies' %}selected{% endif %}>Most Replies</option>
+        </select>
+    </div>
+    
+    <!-- Buttons -->
+    <button type="submit" class="btn btn-primary btn-sm w-100 mb-2">Apply Filters</button>
+    <a href="/" class="btn btn-secondary btn-sm w-100">Clear All</a>
+</form>
+
+<script>
+// Auto-submit on filter change
+const filterForm = document.getElementById('filterForm');
+if (filterForm) {
+    document.querySelectorAll('.auto-submit').forEach(el => {
+        el.addEventListener('change', () => {
+            filterForm.submit();
+        });
+    });
+}
+</script>
+

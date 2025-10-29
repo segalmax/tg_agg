@@ -92,6 +92,73 @@ def channel_posts(request, username):
     })
 
 
+def post_detail(request, username, post_id):
+    """Display single post with navigation to prev/next posts"""
+    channel = get_object_or_404(Channel, username=username)
+    post = get_object_or_404(Post, channel=channel, telegram_id=post_id)
+    
+    # Get filters from query params to maintain context
+    posts = Post.objects.select_related('channel').all()
+    
+    search_query = request.GET.get('q', '').strip()
+    if search_query:
+        posts = posts.filter(text__icontains=search_query)
+    
+    channel_filter = request.GET.get('channel', '').strip()
+    if channel_filter:
+        posts = posts.filter(channel__username=channel_filter)
+    
+    media_filter = request.GET.get('media', '').strip()
+    if not media_filter:
+        media_filter = 'video'
+    
+    if media_filter == 'video':
+        posts = posts.filter(video_data__isnull=False)
+    elif media_filter == 'photo':
+        posts = posts.filter(media_type='MessageMediaPhoto')
+    elif media_filter == 'all_media':
+        posts = posts.filter(has_media=True)
+    
+    date_from = request.GET.get('date_from', '').strip()
+    if date_from:
+        posts = posts.filter(date__gte=date_from)
+    
+    date_to = request.GET.get('date_to', '').strip()
+    if date_to:
+        posts = posts.filter(date__lte=date_to)
+    
+    sort_by = request.GET.get('sort', '-date')
+    if sort_by in ['date', '-date', 'views', '-views', 'forwards', '-forwards', 'replies', '-replies']:
+        posts = posts.order_by(sort_by)
+    
+    # Find prev/next in filtered list
+    posts_list = list(posts.values_list('channel__username', 'telegram_id', flat=False))
+    current_idx = None
+    for idx, (ch_user, tid) in enumerate(posts_list):
+        if ch_user == username and tid == post_id:
+            current_idx = idx
+            break
+    
+    prev_post = None
+    next_post = None
+    if current_idx is not None:
+        if current_idx > 0:
+            prev_post = posts_list[current_idx - 1]
+        if current_idx < len(posts_list) - 1:
+            next_post = posts_list[current_idx + 1]
+    
+    # Build query string for navigation
+    query_params = request.GET.copy()
+    query_string = '&' + query_params.urlencode() if query_params else ''
+    
+    return render(request, 'videos/post_detail.html', {
+        'post': post,
+        'prev_post': prev_post,
+        'next_post': next_post,
+        'query_string': query_string,
+    })
+
+
 def get_video_url(request, channel, post_id):
     """Fetch video URL from Telegram embed page"""
     try:

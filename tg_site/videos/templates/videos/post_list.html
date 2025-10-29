@@ -5,476 +5,136 @@
 {% endblock %}
 
 {% block content %}
-<style>
-body { background: #f5f5f5; margin: 0; padding: 0; }
-.layout { display: flex; max-width: 1400px; margin: 0 auto; }
-.sidebar { 
-    width: 250px; 
-    background: white; 
-    padding: 20px; 
-    margin-right: 20px;
-    height: calc(100vh - 40px);
-    position: sticky;
-    top: 20px;
-    overflow-y: auto;
-}
-.main-content { flex: 1; }
-.post-item { 
-    background: white; 
-    margin-bottom: 2px; 
-    display: table; 
-    width: 100%;
-}
-.post-item:hover { 
-    background: #fafafa; 
-}
-.media-player { 
-    display: table-cell; 
-    width: 320px; 
-    vertical-align: top;
-}
-.media-player video { 
-    width: 320px; 
-    height: 180px; 
-    display: block; 
-    background: #000;
-    pointer-events: auto;
-    position: relative;
-    z-index: 1;
-}
-.post-info { 
-    display: table-cell; 
-    padding: 12px; 
-    vertical-align: top;
-    max-height: 180px;
-    box-sizing: border-box;
-}
-.post-text { 
-    font-size: 14px; 
-    line-height: 1.4;
-    max-height: 90px;
-    overflow: hidden;
-    margin-bottom: 6px;
-    position: relative;
-    word-wrap: break-word;
-}
-.post-text code {
-    background: #f4f4f4;
-    padding: 2px 4px;
-    border-radius: 3px;
-    font-family: monospace;
-    font-size: 13px;
-}
-.post-text strong {
-    font-weight: bold;
-}
-.post-text em {
-    font-style: italic;
-}
-.post-text.truncated::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    right: 0;
-    width: 100%;
-    height: 25px;
-    background: linear-gradient(transparent, white);
-    pointer-events: none;
-}
-.see-more-btn {
-    color: #0088cc;
-    cursor: pointer;
-    font-size: 13px;
-    text-decoration: underline;
-    display: inline-block;
-    margin-top: 4px;
-}
-.post-meta { 
-    color: #666; 
-    font-size: 13px; 
-    margin-bottom: 6px;
-}
-.post-links a { 
-    color: #0088cc; 
-    text-decoration: none; 
-    font-size: 13px;
-    margin-left: 10px;
-}
-.post-links a:hover { 
-    text-decoration: underline; 
-}
-.filter-section {
-    margin-bottom: 20px;
-    padding-bottom: 15px;
-    border-bottom: 1px solid #eee;
-}
-.filter-section:last-child { border-bottom: none; }
-.filter-section h3 {
-    font-size: 14px;
-    margin: 0 0 10px 0;
-    color: #333;
-}
-.filter-section label {
-    display: block;
-    font-size: 13px;
-    margin-bottom: 5px;
-    color: #666;
-}
-.filter-section input, .filter-section select {
-    width: 100%;
-    padding: 6px 8px;
-    font-size: 13px;
-    border: 1px solid #ddd;
-    border-radius: 3px;
-    margin-bottom: 10px;
-}
-.filter-section button {
-    width: 100%;
-    padding: 8px;
-    background: #0088cc;
-    color: white;
-    border: none;
-    border-radius: 3px;
-    cursor: pointer;
-    font-size: 13px;
-}
-.filter-section button:hover {
-    background: #006aa3;
-}
-.clear-filters {
-    background: #999 !important;
-    margin-top: 5px;
-}
-.clear-filters:hover {
-    background: #777 !important;
-}
-.search-form { 
-    background: white; 
-    padding: 20px; 
-    margin-bottom: 20px;
-}
-.search-form input { 
-    padding: 8px 12px; 
-    font-size: 14px; 
-    border: 1px solid #ddd; 
-    border-radius: 4px; 
-    width: 400px;
-}
-.search-form button { 
-    padding: 8px 16px; 
-    font-size: 14px; 
-    background: #0088cc; 
-    color: white; 
-    border: none; 
-    border-radius: 4px; 
-    cursor: pointer;
-}
-.search-form button:hover { 
-    background: #006aa3; 
-}
-.pagination { 
-    background: white; 
-    padding: 15px; 
-    margin-top: 20px; 
-    text-align: center;
-}
-.pagination a { 
-    color: #0088cc; 
-    text-decoration: none; 
-    margin: 0 10px;
-}
-.pagination a:hover { 
-    text-decoration: underline; 
-}
-.pagination .current { 
-    margin: 0 15px; 
-    color: #666;
-}
-.modal {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.5);
-    z-index: 1000;
-    justify-content: center;
-    align-items: center;
-}
-.modal.active {
-    display: flex;
-}
-.modal-content {
-    background: white;
-    padding: 30px;
-    max-width: 800px;
-    max-height: 80vh;
-    overflow-y: auto;
-    border-radius: 8px;
-    position: relative;
-}
-#modalText {
-    font-size: 15px;
-    line-height: 1.6;
-    word-wrap: break-word;
-}
-#modalText code {
-    background: #f4f4f4;
-    padding: 2px 4px;
-    border-radius: 3px;
-    font-family: monospace;
-    font-size: 14px;
-}
-#modalText strong {
-    font-weight: bold;
-}
-#modalText em {
-    font-style: italic;
-}
-.modal-close {
-    position: absolute;
-    top: 10px;
-    right: 15px;
-    font-size: 28px;
-    cursor: pointer;
-    color: #666;
-}
-.modal-close:hover {
-    color: #000;
-}
-</style>
-
-<div class="layout">
-    <div class="sidebar">
-        <form method="get" action="/" id="filterForm">
-            <div class="filter-section">
-                <h3>🔍 Search</h3>
-                <input type="text" name="q" id="searchInput" placeholder="Search text..." value="{{ search_query|default:'' }}">
-            </div>
-            
-            <div class="filter-section">
-                <h3>📺 Channel</h3>
-                <select name="channel" class="auto-submit">
-                    <option value="">All Channels</option>
-                    {% for ch in channels %}
-                    <option value="{{ ch.username }}" {% if filters.channel == ch.username %}selected{% endif %}>
-                        {{ ch.username }}
-                    </option>
+<div class="container-fluid">
+    <div class="row">
+        <!-- Desktop Sidebar (hidden on mobile) -->
+        <div class="col-md-3 col-lg-2 d-none d-md-block bg-white p-3 sticky-top" style="top: 56px; height: calc(100vh - 56px); overflow-y: auto;">
+            {% include 'videos/filter_form.html' %}
+        </div>
+        
+        <!-- Main Content -->
+        <div class="col-12 col-md-9 col-lg-10">
+            <div class="container-fluid py-3">
+                {% if channel %}
+                <div class="alert alert-info">
+                    <strong>Channel:</strong> {{ channel.username }}
+                </div>
+                {% endif %}
+                
+                <!-- Video Grid -->
+                <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5 g-3">
+                    {% for post in page_obj %}
+                    <div class="col">
+                        <div class="card video-card h-100" onclick="window.location.href='{% url 'post_detail' post.channel.username post.telegram_id %}?{{ query_string|slice:'1:' }}'">
+                            {% if post.video_data %}
+                            <video class="card-img-top video-thumbnail" 
+                                   preload="none" 
+                                   data-channel="{{ post.channel.username }}" 
+                                   data-post="{{ post.telegram_id }}">
+                                <source src="" type="video/mp4">
+                            </video>
+                            {% else %}
+                            <div class="card-img-top video-thumbnail bg-secondary d-flex align-items-center justify-content-center text-white">
+                                <span>📷</span>
+                            </div>
+                            {% endif %}
+                            <div class="card-body p-2">
+                                <p class="card-text small mb-1" style="height: 40px; overflow: hidden; line-height: 1.3;">
+                                    {{ post.text|truncatewords:10 }}
+                                </p>
+                                <div class="text-muted" style="font-size: 0.75rem;">
+                                    <div>👁 {{ post.views|default:"0" }}</div>
+                                    <div>{{ post.channel.username }}</div>
+                                    <div class="post-datetime" data-datetime="{{ post.date.isoformat }}"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="col-12">
+                        <div class="alert alert-warning">No posts found.</div>
+                    </div>
                     {% endfor %}
-                </select>
-            </div>
-            
-            <div class="filter-section">
-                <h3>🎬 Media Type</h3>
-                <select name="media" class="auto-submit">
-                    <option value="">All Posts</option>
-                    <option value="video" {% if filters.media == 'video' or not filters.media %}selected{% endif %}>Videos Only</option>
-                    <option value="photo" {% if filters.media == 'photo' %}selected{% endif %}>Photos Only</option>
-                    <option value="all_media" {% if filters.media == 'all_media' %}selected{% endif %}>All Media</option>
-                </select>
-            </div>
-            
-            <div class="filter-section">
-                <h3>👁 Views</h3>
-                <label>Minimum Views</label>
-                <input type="number" name="min_views" class="auto-submit" placeholder="e.g. 10000" value="{{ filters.min_views|default:'' }}">
-            </div>
-            
-            <div class="filter-section">
-                <h3>📅 Date Range</h3>
-                <label>From</label>
-                <input type="date" name="date_from" class="auto-submit" value="{{ filters.date_from|default:'' }}">
-                <label>To</label>
-                <input type="date" name="date_to" class="auto-submit" value="{{ filters.date_to|default:'' }}">
-            </div>
-            
-            <div class="filter-section">
-                <h3>⬆️ Sort By</h3>
-                <select name="sort" class="auto-submit">
-                    <option value="-date" {% if filters.sort == '-date' %}selected{% endif %}>Newest First</option>
-                    <option value="date" {% if filters.sort == 'date' %}selected{% endif %}>Oldest First</option>
-                    <option value="-views" {% if filters.sort == '-views' %}selected{% endif %}>Most Views</option>
-                    <option value="views" {% if filters.sort == 'views' %}selected{% endif %}>Least Views</option>
-                    <option value="-forwards" {% if filters.sort == '-forwards' %}selected{% endif %}>Most Forwards</option>
-                    <option value="-replies" {% if filters.sort == '-replies' %}selected{% endif %}>Most Replies</option>
-                </select>
-            </div>
-            
-            <button type="button" class="clear-filters" onclick="window.location.href='/'">Clear All</button>
-        </form>
-    </div>
-    
-    <div class="main-content">
-        {% if channel %}
-            <h2 style="background: white; padding: 15px; margin-bottom: 20px;">Channel: {{ channel.username }}</h2>
-        {% endif %}
-    
-    {% for post in page_obj %}
-        <div class="post-item">
-            {% if post.video_data %}
-            <div class="media-player">
-                <video controls preload="none" data-channel="{{ post.channel.username }}" data-post="{{ post.telegram_id }}">
-                    <source src="" type="video/mp4">
-                </video>
-            </div>
-            {% endif %}
-            <div class="post-info">
-                <div class="post-meta">
-                    👁 {{ post.views }} • 
-                    ⏱ {% if post.video_data.duration %}{{ post.video_data.duration }}s{% else %}--{% endif %} • 
-                    <span class="post-datetime" data-datetime="{{ post.date.isoformat }}"></span> • 
-                    ↪️ {{ post.forwards }} • 
-                    💬 {{ post.replies }}
                 </div>
-                <div class="post-text" data-full-text="{{ post.text|escape }}">{{ post.text }}</div>
-                <div class="post-links">
-                    <a href="{{ post.link }}" target="_blank">Show in Telegram →</a>
-                </div>
+                
+                <!-- Pagination -->
+                {% if page_obj.paginator.num_pages > 1 %}
+                <nav aria-label="Page navigation" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1{{ query_string }}">First</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{{ query_string }}">Previous</a>
+                        </li>
+                        {% endif %}
+                        
+                        <li class="page-item disabled">
+                            <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+                        </li>
+                        
+                        {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{{ query_string }}">Next</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{{ query_string }}">Last</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
             </div>
         </div>
-    {% empty %}
-        <p style="background: white; padding: 20px;">No posts found.</p>
-    {% endfor %}
-    
-    <script>
-    // Auto-submit filters
-    const filterForm = document.getElementById('filterForm');
-    if (filterForm) {
-        document.querySelectorAll('.auto-submit').forEach(el => {
-            el.addEventListener('change', () => {
-                filterForm.submit();
-            });
-        });
-    }
-    
-    // Search on Enter
-    const searchInput = document.getElementById('searchInput');
-    if (searchInput && filterForm) {
-        searchInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                filterForm.submit();
-            }
-        });
-    }
-    
-    // Format datetime in client timezone
-    function formatDateTime(isoString) {
-        const date = new Date(isoString);
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const year = date.getFullYear();
-        const hours = String(date.getHours()).padStart(2, '0');
-        const minutes = String(date.getMinutes()).padStart(2, '0');
-        const seconds = String(date.getSeconds()).padStart(2, '0');
-        return `📅 ${day}/${month}/${year} • 🕒 ${hours}:${minutes}:${seconds}`;
-    }
-    
-    document.querySelectorAll('.post-datetime').forEach(el => {
-        el.textContent = formatDateTime(el.dataset.datetime);
-    });
-    
-    // Parse Telegram markdown
-    function parseTelegramMarkdown(text) {
-        return text
-            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.+?)\*/g, '<em>$1</em>')
-            .replace(/`(.+?)`/g, '<code>$1</code>')
-            .replace(/\n/g, '<br>');
-    }
-    
-    // Handle text overflow and see more
-    document.querySelectorAll('.post-text').forEach(el => {
-        try {
-            const fullText = el.dataset.fullText || '';
-            el.innerHTML = parseTelegramMarkdown(fullText);
-            
-            // Check if entire post-info section exceeds video height (180px)
-            const postInfo = el.parentNode;
-            if (postInfo && postInfo.scrollHeight > 180) {
-                el.classList.add('truncated');
-                const seeMoreBtn = document.createElement('span');
-                seeMoreBtn.className = 'see-more-btn';
-                seeMoreBtn.textContent = 'See more';
-                seeMoreBtn.onclick = () => showModal(fullText);
-                el.parentNode.insertBefore(seeMoreBtn, el.nextSibling);
-            }
-        } catch (err) {
-            console.error('Error processing post text:', err);
-        }
-    });
-    
-    function showModal(text) {
-        const modalText = document.getElementById('modalText');
-        const textModal = document.getElementById('textModal');
-        if (modalText && textModal) {
-            modalText.innerHTML = parseTelegramMarkdown(text);
-            textModal.classList.add('active');
-        }
-    }
-    
-    function closeModal() {
-        const textModal = document.getElementById('textModal');
-        if (textModal) {
-            textModal.classList.remove('active');
-        }
-    }
-    
-    const textModal = document.getElementById('textModal');
-    if (textModal) {
-        textModal.addEventListener('click', (e) => {
-            if (e.target.id === 'textModal') {
-                closeModal();
-            }
-        });
-    }
-    
-    // Load videos
-    document.querySelectorAll('video[data-channel]').forEach(function(video) {
-        const channel = video.dataset.channel;
-        const postId = video.dataset.post;
-        
-        fetch(`/api/video/${channel}/${postId}/`)
-            .then(r => r.json())
-            .then(data => {
-                if (data.video) {
-                    video.querySelector('source').src = data.video;
-                    video.load();
-                }
-                if (data.thumbnail) {
-                    video.poster = data.thumbnail;
-                }
-            })
-            .catch(err => {
-                console.error(`Failed to load video ${channel}/${postId}:`, err);
-            });
-    });
-    </script>
-    
-    <div class="pagination">
-        {% if page_obj.has_previous %}
-            <a href="?page=1{{ query_string }}">First</a>
-            <a href="?page={{ page_obj.previous_page_number }}{{ query_string }}">Previous</a>
-        {% endif %}
-        
-        <span class="current">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
-        
-        {% if page_obj.has_next %}
-            <a href="?page={{ page_obj.next_page_number }}{{ query_string }}">Next</a>
-            <a href="?page={{ page_obj.paginator.num_pages }}{{ query_string }}">Last</a>
-        {% endif %}
-    </div>
-    
-    </div><!-- main-content -->
-</div><!-- layout -->
-
-<div class="modal" id="textModal">
-    <div class="modal-content">
-        <span class="modal-close" onclick="closeModal()">&times;</span>
-        <div id="modalText"></div>
     </div>
 </div>
 
+<!-- Mobile Filter Button -->
+<button class="btn btn-primary btn-filter d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#filterOffcanvas">
+    🔍 Filters
+</button>
+
+<!-- Mobile Offcanvas Filters -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="filterOffcanvas">
+    <div class="offcanvas-header">
+        <h5 class="offcanvas-title">Filters</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body">
+        {% include 'videos/filter_form.html' %}
+    </div>
+</div>
 {% endblock %}
 
+{% block extra_js %}
+<script>
+// Load video thumbnails
+document.querySelectorAll('video[data-channel]').forEach(function(video) {
+    const channel = video.dataset.channel;
+    const postId = video.dataset.post;
+    
+    fetch(`/api/video/${channel}/${postId}/`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.thumbnail) {
+                video.poster = data.thumbnail;
+            }
+        })
+        .catch(err => console.error(`Failed to load thumbnail ${channel}/${postId}:`, err));
+});
+
+// Format datetime
+function formatDateTime(isoString) {
+    const date = new Date(isoString);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+}
+
+document.querySelectorAll('.post-datetime').forEach(el => {
+    el.textContent = formatDateTime(el.dataset.datetime);
+});
+</script>
+{% endblock %}

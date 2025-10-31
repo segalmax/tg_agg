@@ -23,6 +23,8 @@ class Post(models.Model):
     has_media = models.BooleanField(default=False)
     media_type = models.CharField(max_length=50, null=True, blank=True)
     video_data = models.JSONField(null=True, blank=True)
+    when_added = models.DateTimeField(auto_now_add=True)
+    when_updated = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         unique_together = [['channel', 'telegram_id']]

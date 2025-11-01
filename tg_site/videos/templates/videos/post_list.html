@@ -25,7 +25,7 @@
                 <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5 g-3">
                     {% for post in page_obj %}
                     <div class="col">
-                        <div class="card video-card h-100" onclick="window.location.href='{% url 'post_detail' post.channel.username post.telegram_id %}?{{ query_string|slice:'1:' }}'">
+                        <div class="card video-card h-100" data-channel="{{ post.channel.username }}" data-post="{{ post.telegram_id }}">
                             {% if post.video_data %}
                             <video class="card-img-top video-thumbnail" 
                                    preload="none" 
@@ -90,6 +90,16 @@
     </div>
 </div>
 
+<!-- Global Video Modal -->
+<div class="modal fade" id="videoModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-xl">
+    <div class="modal-content bg-dark border-0">
+      <div class="modal-body p-0 position-relative" id="videoModalBody"></div>
+      <button type="button" class="btn-close position-absolute top-0 end-0 m-3" data-bs-dismiss="modal"></button>
+    </div>
+  </div>
+</div>
+
 <!-- Mobile Filter Button -->
 <button class="btn btn-primary btn-filter d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#filterOffcanvas">
     🔍 Filters
@@ -135,6 +145,68 @@ function formatDateTime(isoString) {
 
 document.querySelectorAll('.post-datetime').forEach(el => {
     el.textContent = formatDateTime(el.dataset.datetime);
+});
+
+// Auto-preview on hover (desktop)
+document.querySelectorAll('.video-card').forEach(card => {
+    const channel = card.dataset.channel;
+    const postId = card.dataset.post;
+    let fetched = false;
+    let previewVideo;
+
+    function startPreview() {
+        if (fetched) {
+            previewVideo.play().catch(()=>{});
+            return;
+        }
+        fetch(`/api/video/${channel}/${postId}/`)
+            .then(r=>r.json())
+            .then(data=>{
+                fetched = true;
+                if (!data.video) return; // no preview
+                previewVideo = document.createElement('video');
+                previewVideo.src = data.video;
+                previewVideo.muted = false; // unmuted per requirement
+                previewVideo.autoplay = true;
+                previewVideo.loop = true;
+                previewVideo.playsInline = true;
+                previewVideo.className = 'video-thumbnail';
+                const thumb = card.querySelector('.video-thumbnail');
+                thumb.replaceWith(previewVideo);
+            });
+    }
+    card.addEventListener('mouseenter', startPreview);
+    card.addEventListener('mouseleave', ()=>{
+        if (previewVideo) previewVideo.pause();
+    });
+
+    // click / tap opens modal
+    card.addEventListener('click', ()=>{
+        fetch(`/api/video/${channel}/${postId}/`)
+            .then(r=>r.json())
+            .then(data=>{
+                const bodyEl = document.getElementById('videoModalBody');
+                bodyEl.innerHTML = '';
+                if (data.video) {
+                    const vid = document.createElement('video');
+                    vid.src = data.video;
+                    vid.autoplay = true;
+                    vid.controls = true;
+                    vid.playsInline = true;
+                    vid.className = 'w-100';
+                    bodyEl.appendChild(vid);
+                    const modalEl = new bootstrap.Modal(document.getElementById('videoModal'));
+                    modalEl.show();
+                    // request fullscreen on mobile
+                    if (window.innerWidth < 768) {
+                        vid.requestFullscreen?.();
+                    }
+                } else {
+                    bodyEl.innerHTML = `<div class='d-flex flex-column align-items-center justify-content-center text-white py-5'><h4 class='mb-3'>📹 Video too large to embed</h4><a href='${data.thumbnail ? card.querySelector('video')?.poster || '' : '#'}' target='_blank' class='btn btn-primary'>Open in Telegram</a></div>`;
+                    new bootstrap.Modal(document.getElementById('videoModal')).show();
+                }
+            });
+    });
 });
 </script>
 {% endblock %}

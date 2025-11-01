@@ -4,6 +4,46 @@
     {% if channel %}{{ channel.username }} - Telegram Videos{% else %}Telegram Videos{% endif %}
 {% endblock %}
 
+{% block extra_css %}
+<style>
+.video-card {
+    cursor: pointer;
+}
+.video-card .video-thumbnail {
+    height: 280px;
+    object-fit: cover;
+}
+.video-card .preview-video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 280px;
+    object-fit: cover;
+    display: none;
+    z-index: 10;
+}
+.video-card:hover .preview-video.loaded {
+    display: block;
+}
+#videoModal .modal-dialog {
+    max-width: 90vw;
+}
+#videoModal video {
+    width: 100%;
+    max-height: 80vh;
+    background: #000;
+}
+.fallback-container {
+    min-height: 400px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #1a1a1a;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
     <div class="row">
@@ -21,23 +61,35 @@
                 </div>
                 {% endif %}
                 
-                <!-- Video Grid -->
-                <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5 g-3">
+                <!-- Video Grid (bigger cards: 2 cols mobile, 2-3 desktop) -->
+                <div class="row row-cols-2 row-cols-lg-3 row-cols-xl-3 g-3">
                     {% for post in page_obj %}
                     <div class="col">
-                        <div class="card video-card h-100" data-channel="{{ post.channel.username }}" data-post="{{ post.telegram_id }}">
-                            {% if post.video_data %}
-                            <video class="card-img-top video-thumbnail" 
-                                   preload="none" 
-                                   data-channel="{{ post.channel.username }}" 
-                                   data-post="{{ post.telegram_id }}">
-                                <source src="" type="video/mp4">
-                            </video>
-                            {% else %}
-                            <div class="card-img-top video-thumbnail bg-secondary d-flex align-items-center justify-content-center text-white">
-                                <span>📷</span>
+                        <div class="card video-card h-100" 
+                             data-channel="{{ post.channel.username }}" 
+                             data-post="{{ post.telegram_id }}"
+                             data-link="{{ post.link }}"
+                             data-text="{{ post.text|escape }}"
+                             data-views="{{ post.views|default:'0' }}"
+                             data-has-video="{{ post.video_data|yesno:'true,false' }}">
+                            <div class="position-relative">
+                                {% if post.video_data %}
+                                <!-- Static thumbnail -->
+                                <video class="card-img-top video-thumbnail" 
+                                       preload="none">
+                                </video>
+                                <!-- Hover preview video (desktop only) -->
+                                <video class="preview-video d-none d-md-block" 
+                                       muted 
+                                       loop 
+                                       preload="none">
+                                </video>
+                                {% else %}
+                                <div class="card-img-top video-thumbnail bg-secondary d-flex align-items-center justify-content-center text-white">
+                                    <span style="font-size: 48px;">📷</span>
+                                </div>
+                                {% endif %}
                             </div>
-                            {% endif %}
                             <div class="card-body p-2">
                                 <p class="card-text small mb-1" style="height: 40px; overflow: hidden; line-height: 1.3;">
                                     {{ post.text|truncatewords:10 }}
@@ -90,16 +142,6 @@
     </div>
 </div>
 
-<!-- Global Video Modal -->
-<div class="modal fade" id="videoModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-xl">
-    <div class="modal-content bg-dark border-0">
-      <div class="modal-body p-0 position-relative" id="videoModalBody"></div>
-      <button type="button" class="btn-close position-absolute top-0 end-0 m-3" data-bs-dismiss="modal"></button>
-    </div>
-  </div>
-</div>
-
 <!-- Mobile Filter Button -->
 <button class="btn btn-primary btn-filter d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#filterOffcanvas">
     🔍 Filters
@@ -115,24 +157,30 @@
         {% include 'videos/filter_form.html' %}
     </div>
 </div>
+
+<!-- Video Modal -->
+<div class="modal fade" id="videoModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark">
+            <div class="modal-header border-0">
+                <h5 class="modal-title text-white" id="videoModalTitle"></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div id="modalVideoContainer"></div>
+            </div>
+            <div class="modal-footer border-0 bg-dark">
+                <div class="text-white small" id="modalVideoInfo"></div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-// Load video thumbnails
-document.querySelectorAll('video[data-channel]').forEach(function(video) {
-    const channel = video.dataset.channel;
-    const postId = video.dataset.post;
-    
-    fetch(`/api/video/${channel}/${postId}/`)
-        .then(r => r.json())
-        .then(data => {
-            if (data.thumbnail) {
-                video.poster = data.thumbnail;
-            }
-        })
-        .catch(err => console.error(`Failed to load thumbnail ${channel}/${postId}:`, err));
-});
+// Store video URLs to avoid re-fetching
+const videoCache = {};
 
 // Format datetime
 function formatDateTime(isoString) {
@@ -147,66 +195,176 @@ document.querySelectorAll('.post-datetime').forEach(el => {
     el.textContent = formatDateTime(el.dataset.datetime);
 });
 
-// Auto-preview on hover (desktop)
+// Fetch video URL and cache it
+async function getVideoUrl(channel, postId) {
+    const cacheKey = `${channel}/${postId}`;
+    if (videoCache[cacheKey]) {
+        return videoCache[cacheKey];
+    }
+    
+    try {
+        const response = await fetch(`/api/video/${channel}/${postId}/`);
+        const data = await response.json();
+        videoCache[cacheKey] = data;
+        return data;
+    } catch (err) {
+        console.error(`Failed to load video ${cacheKey}:`, err);
+        return { video: null, thumbnail: null };
+    }
+}
+
+// Initialize all video cards
 document.querySelectorAll('.video-card').forEach(card => {
     const channel = card.dataset.channel;
     const postId = card.dataset.post;
-    let fetched = false;
-    let previewVideo;
-
-    function startPreview() {
-        if (fetched) {
-            previewVideo.play().catch(()=>{});
-            return;
+    const hasVideo = card.dataset.hasVideo === 'true';
+    
+    if (!hasVideo) return;
+    
+    const thumbnail = card.querySelector('.video-thumbnail');
+    const previewVideo = card.querySelector('.preview-video');
+    let videoData = null;
+    let isHovering = false;
+    
+    // Load thumbnail immediately
+    getVideoUrl(channel, postId).then(data => {
+        videoData = data;
+        if (data.thumbnail && thumbnail) {
+            thumbnail.poster = data.thumbnail;
         }
-        fetch(`/api/video/${channel}/${postId}/`)
-            .then(r=>r.json())
-            .then(data=>{
-                fetched = true;
-                if (!data.video) return; // no preview
-                previewVideo = document.createElement('video');
-                previewVideo.src = data.video;
-                previewVideo.muted = false; // unmuted per requirement
-                previewVideo.autoplay = true;
-                previewVideo.loop = true;
-                previewVideo.playsInline = true;
-                previewVideo.className = 'video-thumbnail';
-                const thumb = card.querySelector('.video-thumbnail');
-                thumb.replaceWith(previewVideo);
-            });
-    }
-    card.addEventListener('mouseenter', startPreview);
-    card.addEventListener('mouseleave', ()=>{
-        if (previewVideo) previewVideo.pause();
     });
-
-    // click / tap opens modal
-    card.addEventListener('click', ()=>{
-        fetch(`/api/video/${channel}/${postId}/`)
-            .then(r=>r.json())
-            .then(data=>{
-                const bodyEl = document.getElementById('videoModalBody');
-                bodyEl.innerHTML = '';
-                if (data.video) {
-                    const vid = document.createElement('video');
-                    vid.src = data.video;
-                    vid.autoplay = true;
-                    vid.controls = true;
-                    vid.playsInline = true;
-                    vid.className = 'w-100';
-                    bodyEl.appendChild(vid);
-                    const modalEl = new bootstrap.Modal(document.getElementById('videoModal'));
-                    modalEl.show();
-                    // request fullscreen on mobile
-                    if (window.innerWidth < 768) {
-                        vid.requestFullscreen?.();
-                    }
-                } else {
-                    bodyEl.innerHTML = `<div class='d-flex flex-column align-items-center justify-content-center text-white py-5'><h4 class='mb-3'>📹 Video too large to embed</h4><a href='${data.thumbnail ? card.querySelector('video')?.poster || '' : '#'}' target='_blank' class='btn btn-primary'>Open in Telegram</a></div>`;
-                    new bootstrap.Modal(document.getElementById('videoModal')).show();
-                }
-            });
+    
+    // Desktop hover preview
+    if (previewVideo) {
+        card.addEventListener('mouseenter', async () => {
+            isHovering = true;
+            if (!videoData) {
+                videoData = await getVideoUrl(channel, postId);
+            }
+            
+            if (videoData.video && isHovering) {
+                previewVideo.src = videoData.video;
+                previewVideo.classList.add('loaded');
+                previewVideo.play().catch(err => {
+                    console.log('Preview play failed:', err);
+                });
+            }
+        });
+        
+        card.addEventListener('mouseleave', () => {
+            isHovering = false;
+            if (previewVideo) {
+                previewVideo.pause();
+                previewVideo.classList.remove('loaded');
+            }
+        });
+    }
+    
+    // Click handler for modal (desktop) or fullscreen (mobile)
+    card.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        
+        if (!videoData) {
+            videoData = await getVideoUrl(channel, postId);
+        }
+        
+        const isMobile = window.innerWidth < 768;
+        
+        if (isMobile) {
+            // Mobile: try to play fullscreen directly
+            if (videoData.video) {
+                const tempVideo = document.createElement('video');
+                tempVideo.src = videoData.video;
+                tempVideo.controls = true;
+                tempVideo.style.position = 'fixed';
+                tempVideo.style.top = '0';
+                tempVideo.style.left = '0';
+                tempVideo.style.width = '100vw';
+                tempVideo.style.height = '100vh';
+                tempVideo.style.zIndex = '9999';
+                tempVideo.style.backgroundColor = '#000';
+                
+                document.body.appendChild(tempVideo);
+                
+                tempVideo.requestFullscreen().then(() => {
+                    tempVideo.play();
+                }).catch(() => {
+                    // Fallback if fullscreen fails
+                    tempVideo.play();
+                });
+                
+                tempVideo.addEventListener('ended', () => {
+                    document.exitFullscreen().catch(() => {});
+                    tempVideo.remove();
+                });
+                
+                tempVideo.addEventListener('pause', () => {
+                    setTimeout(() => {
+                        document.exitFullscreen().catch(() => {});
+                        tempVideo.remove();
+                    }, 100);
+                });
+            } else {
+                // No video available - open Telegram
+                window.open(card.dataset.link, '_blank');
+            }
+        } else {
+            // Desktop: show modal
+            showVideoModal(card, videoData);
+        }
     });
 });
+
+// Show video in Bootstrap modal (desktop)
+function showVideoModal(card, videoData) {
+    const modalEl = document.getElementById('videoModal');
+    const modal = new bootstrap.Modal(modalEl);
+    const container = document.getElementById('modalVideoContainer');
+    const title = document.getElementById('videoModalTitle');
+    const info = document.getElementById('modalVideoInfo');
+    
+    title.textContent = card.dataset.channel;
+    info.innerHTML = `👁 ${card.dataset.views} views`;
+    
+    container.innerHTML = '';
+    
+    if (videoData.video) {
+        // Video available - autoplay unmuted
+        const video = document.createElement('video');
+        video.src = videoData.video;
+        video.controls = true;
+        video.autoplay = true;
+        video.style.width = '100%';
+        video.style.maxHeight = '80vh';
+        video.style.backgroundColor = '#000';
+        
+        if (videoData.thumbnail) {
+            video.poster = videoData.thumbnail;
+        }
+        
+        container.appendChild(video);
+        
+        // Clean up when modal closes
+        modalEl.addEventListener('hidden.bs.modal', () => {
+            video.pause();
+            video.src = '';
+        }, { once: true });
+    } else {
+        // Video too large - show fallback
+        container.innerHTML = `
+            <div class="fallback-container text-center p-5">
+                <div class="text-white">
+                    <h4 class="mb-3">📹 Video too large to embed</h4>
+                    <p class="mb-4">Telegram doesn't allow embedding large videos</p>
+                    <a href="${card.dataset.link}" target="_blank" class="btn btn-primary btn-lg">
+                        Open in Telegram to Watch
+                    </a>
+                </div>
+            </div>
+        `;
+    }
+    
+    modal.show();
+}
 </script>
 {% endblock %}

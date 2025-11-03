@@ -181,8 +181,10 @@ def get_video_url(request, channel, post_id):
             'Connection': 'keep-alive',
             'Upgrade-Insecure-Requests': '1',
         }
-        # Use a session to handle cookies properly
+        # Use a session to handle cookies properly  
         session = requests.Session()
+        # Disable automatic gzip decompression which seems to corrupt gazaalannet responses
+        session.headers['Accept-Encoding'] = 'identity'
         resp = session.get(embed_url, timeout=10, headers=headers)
         
         # Debug: Save HTML for gazaalannet to see what we're getting

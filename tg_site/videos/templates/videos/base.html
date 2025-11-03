@@ -41,10 +41,58 @@
         @media (min-width: 768px) {
             .btn-filter { display: none; }
         }
+        
+        /* Loading Bar */
+        #loadingBar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 3px;
+            background: linear-gradient(to right, #0d6efd, #0dcaf0);
+            z-index: 9999;
+            transition: width 0.3s ease;
+            display: none;
+            box-shadow: 0 0 10px rgba(13, 110, 253, 0.5);
+        }
+        
+        /* Filter Chips */
+        .filter-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .filter-chip {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            background: #e7f1ff;
+            border: 1px solid #b6d4fe;
+            border-radius: 16px;
+            font-size: 0.875rem;
+            color: #084298;
+        }
+        .filter-chip .remove {
+            margin-left: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            opacity: 0.7;
+        }
+        .filter-chip .remove:hover {
+            opacity: 1;
+        }
+        .results-counter {
+            font-size: 0.95rem;
+            color: #6c757d;
+            margin-bottom: 12px;
+        }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
 <body>
+    <!-- Loading Bar -->
+    <div id="loadingBar"></div>
+    
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
         <div class="container-fluid">

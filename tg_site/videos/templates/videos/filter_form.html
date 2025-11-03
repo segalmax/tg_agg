@@ -2,69 +2,375 @@
     <!-- Search -->
     <div class="mb-3">
         <label class="form-label fw-bold">🔍 Search</label>
-        <input type="text" name="q" class="form-control form-control-sm" placeholder="Search text..." value="{{ search_query|default:'' }}">
+        <div class="input-group input-group-sm">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input type="text" 
+                   name="q" 
+                   id="searchInput"
+                   class="form-control" 
+                   placeholder="Search posts..." 
+                   value="{{ search_query|default:'' }}">
+            <button class="btn btn-outline-secondary" 
+                    type="button" 
+                    id="clearSearch" 
+                    style="display: {% if search_query %}block{% else %}none{% endif %};">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <small class="text-muted">Press Enter to search</small>
     </div>
     
-    <!-- Channel -->
+    <!-- Channel Multi-Select -->
     <div class="mb-3">
-        <label class="form-label fw-bold">📺 Channel</label>
-        <select name="channel" class="form-select form-select-sm auto-submit">
-            <option value="">All Channels</option>
-            {% for ch in channels %}
-            <option value="{{ ch.username }}" {% if filters.channel == ch.username %}selected{% endif %}>
-                {{ ch.username }}
-            </option>
-            {% endfor %}
-        </select>
+        <label class="form-label fw-bold">📺 Channels</label>
+        <div class="dropdown w-100">
+            <button class="btn btn-sm btn-outline-secondary dropdown-toggle w-100 text-start" 
+                    type="button" 
+                    id="channelDropdown" 
+                    data-bs-toggle="dropdown" 
+                    data-bs-auto-close="outside"
+                    aria-expanded="false">
+                <span id="channelDropdownLabel">All Channels</span>
+            </button>
+            <div class="dropdown-menu w-100 p-2" aria-labelledby="channelDropdown" style="max-height: 300px; overflow-y: auto;">
+                {% for ch in channels %}
+                <div class="form-check">
+                    <input class="form-check-input channel-checkbox" 
+                           type="checkbox" 
+                           value="{{ ch.username }}" 
+                           id="channel_{{ ch.username }}"
+                           {% if ch.username in filters.channels %}checked{% endif %}>
+                    <label class="form-check-label small" for="channel_{{ ch.username }}">
+                        {% if ch.title and ch.title != ch.username %}{{ ch.title }} <span class="text-muted">(@{{ ch.username }})</span>{% else %}{{ ch.username }}{% endif %}
+                    </label>
+                </div>
+                {% empty %}
+                <div class="text-muted small">No channels yet</div>
+                {% endfor %}
+            </div>
+        </div>
+        <input type="hidden" name="channels" id="channelsInput" value="{{ filters.channels }}">
+        
+        <!-- Add Channel Inline -->
+        <div class="mt-2 pt-2 border-top">
+            <div class="input-group input-group-sm">
+                <input type="text" 
+                       class="form-control" 
+                       id="newChannelUsername" 
+                       placeholder="Add channel (username only)">
+                <button class="btn btn-outline-primary" type="button" id="addChannelBtn">
+                    <i class="bi bi-plus-lg"></i> Add
+                </button>
+            </div>
+            <div id="addChannelFeedback" class="mt-1 small"></div>
+        </div>
     </div>
     
-    <!-- Media Type -->
+    <!-- Media Type (Radio Buttons) -->
     <div class="mb-3">
         <label class="form-label fw-bold">🎬 Media Type</label>
-        <select name="media" class="form-select form-select-sm auto-submit">
-            <option value="">All Posts</option>
-            <option value="video" {% if filters.media == 'video' or not filters.media %}selected{% endif %}>Videos Only</option>
-            <option value="photo" {% if filters.media == 'photo' %}selected{% endif %}>Photos Only</option>
-            <option value="all_media" {% if filters.media == 'all_media' %}selected{% endif %}>All Media</option>
-        </select>
+        <div class="form-check">
+            <input class="form-check-input media-radio" 
+                   type="radio" 
+                   name="media" 
+                   value="all" 
+                   id="media_all"
+                   {% if filters.media == 'all' %}checked{% endif %}>
+            <label class="form-check-label" for="media_all">All posts</label>
+        </div>
+        <div class="form-check">
+            <input class="form-check-input media-radio" 
+                   type="radio" 
+                   name="media" 
+                   value="video" 
+                   id="media_video"
+                   {% if filters.media == 'video' %}checked{% endif %}>
+            <label class="form-check-label" for="media_video">Videos only</label>
+        </div>
+        <div class="form-check">
+            <input class="form-check-input media-radio" 
+                   type="radio" 
+                   name="media" 
+                   value="photo" 
+                   id="media_photo"
+                   {% if filters.media == 'photo' %}checked{% endif %}>
+            <label class="form-check-label" for="media_photo">Photos only</label>
+        </div>
+        <div class="form-check">
+            <input class="form-check-input media-radio" 
+                   type="radio" 
+                   name="media" 
+                   value="has_media" 
+                   id="media_has_media"
+                   {% if filters.media == 'has_media' %}checked{% endif %}>
+            <label class="form-check-label" for="media_has_media">Has media</label>
+        </div>
     </div>
     
     <!-- Date Range -->
     <div class="mb-3">
         <label class="form-label fw-bold">📅 Date Range</label>
         <label class="form-label form-label-sm">From</label>
-        <input type="date" name="date_from" class="form-control form-control-sm auto-submit" value="{{ filters.date_from|default:'' }}">
+        <input type="date" 
+               name="date_from" 
+               id="dateFrom"
+               class="form-control form-control-sm" 
+               value="{{ filters.date_from|default:'' }}">
         <label class="form-label form-label-sm mt-2">To</label>
-        <input type="date" name="date_to" class="form-control form-control-sm auto-submit" value="{{ filters.date_to|default:'' }}">
+        <input type="date" 
+               name="date_to" 
+               id="dateTo"
+               class="form-control form-control-sm" 
+               value="{{ filters.date_to|default:'' }}">
     </div>
     
     <!-- Sort By -->
     <div class="mb-3">
         <label class="form-label fw-bold">⬆️ Sort By</label>
-        <select name="sort" class="form-select form-select-sm auto-submit">
+        <select name="sort" id="sortSelect" class="form-select form-select-sm">
             <option value="-date" {% if filters.sort == '-date' %}selected{% endif %}>Newest First</option>
             <option value="date" {% if filters.sort == 'date' %}selected{% endif %}>Oldest First</option>
             <option value="-views" {% if filters.sort == '-views' %}selected{% endif %}>Most Views</option>
-            <option value="views" {% if filters.sort == 'views' %}selected{% endif %}>Least Views</option>
             <option value="-forwards" {% if filters.sort == '-forwards' %}selected{% endif %}>Most Forwards</option>
             <option value="-replies" {% if filters.sort == '-replies' %}selected{% endif %}>Most Replies</option>
         </select>
     </div>
     
-    <!-- Buttons -->
-    <button type="submit" class="btn btn-primary btn-sm w-100 mb-2">Apply Filters</button>
-    <a href="/" class="btn btn-secondary btn-sm w-100">Clear All</a>
+    <!-- Clear All Button -->
+    <div id="clearAllContainer" style="display: none;">
+        <a href="/" class="btn btn-secondary btn-sm w-100 mb-2">
+            <i class="bi bi-x-circle"></i> Clear All Filters
+        </a>
+    </div>
 </form>
 
 <script>
-// Auto-submit on filter change
-const filterForm = document.getElementById('filterForm');
-if (filterForm) {
-    document.querySelectorAll('.auto-submit').forEach(el => {
-        el.addEventListener('change', () => {
-            filterForm.submit();
-        });
-    });
-}
-</script>
+// ====== State Management ======
+var debounceTimer = debounceTimer || null;
+var isSubmitting = isSubmitting || false;
 
+// ====== Helper Functions ======
+function showLoadingBar() {
+    const bar = document.getElementById('loadingBar');
+    if (bar) {
+        bar.style.width = '0%';
+        bar.style.display = 'block';
+        // Animate to 90% over 500ms
+        setTimeout(() => bar.style.width = '90%', 10);
+    }
+}
+
+function hideLoadingBar() {
+    const bar = document.getElementById('loadingBar');
+    if (bar) {
+        bar.style.width = '100%';
+        setTimeout(() => {
+            bar.style.display = 'none';
+        }, 200);
+    }
+}
+
+function submitForm() {
+    if (isSubmitting) return;
+    isSubmitting = true;
+    showLoadingBar();
+    document.getElementById('filterForm').submit();
+}
+
+function debouncedSubmit(delay = 300) {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(submitForm, delay);
+}
+
+function hasActiveFilters() {
+    const form = document.getElementById('filterForm');
+    const searchQuery = document.getElementById('searchInput').value.trim();
+    const channels = document.getElementById('channelsInput').value.trim();
+    const media = document.querySelector('input[name="media"]:checked').value;
+    const dateFrom = document.getElementById('dateFrom').value;
+    const dateTo = document.getElementById('dateTo').value;
+    const sort = document.getElementById('sortSelect').value;
+    
+    return searchQuery || channels || media !== 'video' || dateFrom || dateTo || sort !== '-date';
+}
+
+function updateClearAllButton() {
+    const container = document.getElementById('clearAllContainer');
+    container.style.display = hasActiveFilters() ? 'block' : 'none';
+}
+
+function saveFiltersToStorage() {
+    const channels = document.getElementById('channelsInput').value;
+    // Deduplicate before saving to prevent accumulation
+    const channelList = channels.split(',').filter(c => c.trim());
+    const uniqueChannels = [...new Set(channelList)];
+    localStorage.setItem('selectedChannels', uniqueChannels.join(','));
+}
+
+function loadFiltersFromStorage() {
+    const savedChannels = localStorage.getItem('selectedChannels');
+    if (savedChannels && !document.getElementById('channelsInput').value) {
+        // Deduplicate saved channels before loading
+        const channelList = savedChannels.split(',').filter(c => c.trim());
+        const uniqueChannels = [...new Set(channelList)];
+        document.getElementById('channelsInput').value = uniqueChannels.join(',');
+        // Check the checkboxes
+        uniqueChannels.forEach(username => {
+            const checkbox = document.getElementById(`channel_${username.trim()}`);
+            if (checkbox) checkbox.checked = true;
+        });
+        updateChannelDropdownLabel();
+    }
+}
+
+// ====== Search Functionality ======
+if (typeof searchInput === 'undefined') {
+    var searchInput = document.getElementById('searchInput');
+}
+if (typeof clearSearchBtn === 'undefined') {
+    var clearSearchBtn = document.getElementById('clearSearch');
+}
+
+searchInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        submitForm();
+    }
+});
+
+searchInput.addEventListener('input', () => {
+    clearSearchBtn.style.display = searchInput.value ? 'block' : 'none';
+});
+
+clearSearchBtn.addEventListener('click', () => {
+    searchInput.value = '';
+    clearSearchBtn.style.display = 'none';
+    submitForm();
+});
+
+// ====== Channel Multi-Select ======
+function updateChannelDropdownLabel() {
+    const checkboxes = document.querySelectorAll('.channel-checkbox:checked');
+    const label = document.getElementById('channelDropdownLabel');
+    
+    // Get unique channel values (handles duplicate checkboxes from responsive design)
+    const uniqueChannels = [...new Set(Array.from(checkboxes).map(cb => cb.value))];
+    const count = uniqueChannels.length;
+    
+    if (count === 0) {
+        label.textContent = 'All Channels';
+    } else if (count === 1) {
+        // Use the checkbox value (username) directly instead of label text
+        label.textContent = uniqueChannels[0];
+    } else {
+        label.textContent = `${count} channels selected`;
+    }
+}
+
+function updateChannelsInput() {
+    const checkboxes = document.querySelectorAll('.channel-checkbox:checked');
+    const values = Array.from(checkboxes).map(cb => cb.value);
+    // Deduplicate to prevent duplicates from accumulating
+    const uniqueValues = [...new Set(values)];
+    document.getElementById('channelsInput').value = uniqueValues.join(',');
+    updateChannelDropdownLabel();
+    saveFiltersToStorage();
+}
+
+document.querySelectorAll('.channel-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', (e) => {
+        // Sync with duplicate checkbox (for responsive design - desktop & mobile)
+        const value = e.target.value;
+        const checked = e.target.checked;
+        document.querySelectorAll(`.channel-checkbox[value="${value}"]`).forEach(cb => {
+            if (cb !== e.target) {
+                cb.checked = checked;
+            }
+        });
+        
+        updateChannelsInput();
+        debouncedSubmit();
+        updateClearAllButton();
+    });
+});
+
+// ====== Media Type Radio Buttons ======
+document.querySelectorAll('.media-radio').forEach(radio => {
+    radio.addEventListener('change', () => {
+        submitForm();
+        updateClearAllButton();
+    });
+});
+
+// ====== Date Range ======
+document.getElementById('dateFrom').addEventListener('change', () => {
+    submitForm();
+    updateClearAllButton();
+});
+
+document.getElementById('dateTo').addEventListener('change', () => {
+    submitForm();
+    updateClearAllButton();
+});
+
+// ====== Sort By ======
+document.getElementById('sortSelect').addEventListener('change', () => {
+    submitForm();
+    updateClearAllButton();
+});
+
+// ====== Add Channel ======
+document.getElementById('addChannelBtn').addEventListener('click', async () => {
+    const input = document.getElementById('newChannelUsername');
+    const feedback = document.getElementById('addChannelFeedback');
+    const btn = document.getElementById('addChannelBtn');
+    const username = input.value.trim().replace('@', '');
+    
+    if (!username) {
+        feedback.innerHTML = '<span class="text-warning">⚠️ Enter a channel username</span>';
+        return;
+    }
+    
+    // Disable button and show loading
+    btn.disabled = true;
+    feedback.innerHTML = '<span class="text-info"><div class="spinner-border spinner-border-sm" role="status"></div> Adding channel...</span>';
+    
+    try {
+        const response = await fetch('/api/channel/add/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `username=${encodeURIComponent(username)}`
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            feedback.innerHTML = `<span class="text-success">✅ ${data.message}</span>`;
+            input.value = '';
+            
+            // Reload page after 1.5 seconds to show new channel
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            feedback.innerHTML = `<span class="text-danger">❌ ${data.error}</span>`;
+            btn.disabled = false;
+        }
+    } catch (error) {
+        feedback.innerHTML = '<span class="text-danger">❌ Network error</span>';
+        btn.disabled = false;
+    }
+});
+
+// ====== Initialization ======
+updateChannelDropdownLabel();
+updateClearAllButton();
+loadFiltersFromStorage();
+
+// Hide loading bar on page load
+window.addEventListener('load', () => {
+    hideLoadingBar();
+});
+</script>

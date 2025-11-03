@@ -58,6 +58,16 @@
                 </div>
                 {% endif %}
                 
+                <!-- Results Counter -->
+                <div class="results-counter">
+                    <strong>Showing {{ total_count|default:page_obj.paginator.count }} posts</strong>
+                </div>
+                
+                <!-- Filter Chips -->
+                <div class="filter-chips" id="filterChips">
+                    <!-- Dynamically populated by JavaScript -->
+                </div>
+                
                 <!-- Video Grid: 2 cols mobile, 5 cols desktop (with wider cards) -->
                 <div class="row row-cols-2 row-cols-lg-4 row-cols-xl-5 g-4">
                     {% for post in page_obj %}
@@ -189,6 +199,127 @@
 
 {% block extra_js %}
 <script>
+// ====== Filter Chips ======
+function renderFilterChips() {
+    const chipsContainer = document.getElementById('filterChips');
+    if (!chipsContainer) return;
+    
+    const chips = [];
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    // Search query
+    const searchQuery = urlParams.get('q');
+    if (searchQuery) {
+        chips.push({
+            label: `Search: "${searchQuery}"`,
+            param: 'q'
+        });
+    }
+    
+    // Channels
+    const channels = urlParams.get('channels');
+    if (channels) {
+        const channelList = channels.split(',').filter(c => c.trim());
+        channelList.forEach(channel => {
+            chips.push({
+                label: `📺 ${channel}`,
+                param: 'channels',
+                value: channel
+            });
+        });
+    }
+    
+    // Media type (only show if not default 'video')
+    const media = urlParams.get('media') || 'video';
+    if (media !== 'video') {
+        const mediaLabels = {
+            'all': 'All posts',
+            'photo': 'Photos only',
+            'has_media': 'Has media'
+        };
+        chips.push({
+            label: `🎬 ${mediaLabels[media] || media}`,
+            param: 'media'
+        });
+    }
+    
+    // Date range
+    const dateFrom = urlParams.get('date_from');
+    const dateTo = urlParams.get('date_to');
+    if (dateFrom || dateTo) {
+        const label = dateFrom && dateTo 
+            ? `📅 ${dateFrom} to ${dateTo}`
+            : dateFrom 
+                ? `📅 From ${dateFrom}`
+                : `📅 Until ${dateTo}`;
+        chips.push({
+            label: label,
+            param: 'date_range'
+        });
+    }
+    
+    // Sort (only show if not default '-date')
+    const sort = urlParams.get('sort') || '-date';
+    if (sort !== '-date') {
+        const sortLabels = {
+            'date': 'Oldest First',
+            '-views': 'Most Views',
+            '-forwards': 'Most Forwards',
+            '-replies': 'Most Replies'
+        };
+        chips.push({
+            label: `⬆️ ${sortLabels[sort] || sort}`,
+            param: 'sort'
+        });
+    }
+    
+    // Render chips
+    if (chips.length === 0) {
+        chipsContainer.innerHTML = '';
+        return;
+    }
+    
+    chipsContainer.innerHTML = chips.map(chip => `
+        <div class="filter-chip">
+            ${chip.label}
+            <span class="remove" onclick="removeFilterChip('${chip.param}', '${chip.value || ''}')">×</span>
+        </div>
+    `).join('');
+}
+
+function removeFilterChip(param, value) {
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    if (param === 'channels' && value) {
+        // Remove specific channel from list
+        const channels = (urlParams.get('channels') || '').split(',').filter(c => c.trim());
+        const newChannels = channels.filter(c => c !== value);
+        if (newChannels.length > 0) {
+            urlParams.set('channels', newChannels.join(','));
+        } else {
+            urlParams.delete('channels');
+        }
+    } else if (param === 'date_range') {
+        urlParams.delete('date_from');
+        urlParams.delete('date_to');
+    } else {
+        urlParams.delete(param);
+    }
+    
+    // If removing media, set it back to default 'video'
+    if (param === 'media') {
+        urlParams.set('media', 'video');
+    }
+    
+    // Redirect
+    const newUrl = urlParams.toString() ? `?${urlParams.toString()}` : '/';
+    window.location.href = newUrl;
+}
+
+// Render chips on page load
+renderFilterChips();
+
+// ====== Video Functionality ======
 // Store video URLs to avoid re-fetching
 const videoCache = {};
 let currentModalCard = null;

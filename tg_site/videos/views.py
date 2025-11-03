@@ -1,9 +1,12 @@
 from django.shortcuts import render, get_object_or_404
 from django.core.paginator import Paginator
 from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt
 from .models import Channel, Post
 import requests
 import re
+import os
 
 
 def home(request):
@@ -14,20 +17,23 @@ def home(request):
     if search_query:
         posts = posts.filter(text__icontains=search_query)
     
-    channel_filter = request.GET.get('channel', '').strip()
+    # Multi-channel filter (comma-separated)
+    channel_filter = request.GET.get('channels', '').strip()
     if channel_filter:
-        posts = posts.filter(channel__username=channel_filter)
+        channel_list = [c.strip() for c in channel_filter.split(',') if c.strip()]
+        if channel_list:
+            posts = posts.filter(channel__username__in=channel_list)
     
-    media_filter = request.GET.get('media', '').strip()
-    if not media_filter:
-        media_filter = 'video'
+    # Media filter - now defaults to 'video' for backwards compatibility
+    media_filter = request.GET.get('media', 'video').strip()
     
     if media_filter == 'video':
         posts = posts.filter(video_data__isnull=False)
     elif media_filter == 'photo':
         posts = posts.filter(media_type='MessageMediaPhoto')
-    elif media_filter == 'all_media':
+    elif media_filter == 'has_media':
         posts = posts.filter(has_media=True)
+    # 'all' = no filtering, show everything
     
     min_views = request.GET.get('min_views', '').strip()
     if min_views:
@@ -62,15 +68,18 @@ def home(request):
         query_params.pop('page')
     query_string = '&' + query_params.urlencode() if query_params else ''
     
+    # Count total posts matching filters
+    total_count = posts.count()
+    
     return render(request, 'videos/post_list.html', {
         'page_obj': page_obj,
         'search_query': search_query or '',
         'channels': channels,
         'query_string': query_string,
+        'total_count': total_count,
         'filters': {
-            'channel': channel_filter or '',
-            'media': media_filter or '',
-            'min_views': min_views or '',
+            'channels': channel_filter or '',
+            'media': media_filter or 'video',
             'date_from': date_from or '',
             'date_to': date_to or '',
             'sort': sort_by or '-date',
@@ -231,3 +240,34 @@ def get_video_url(request, channel, post_id):
     except Exception as e:
         print(f"Error fetching video {channel}/{post_id}: {str(e)}")
         return JsonResponse({'error': 'Failed to fetch video'}, status=500)
+
+
+@require_http_methods(["POST"])
+@csrf_exempt
+def add_channel(request):
+    """Add a new channel by username - just insert into DB"""
+    try:
+        username = request.POST.get('username', '').strip().replace('@', '')
+        
+        if not username:
+            return JsonResponse({'success': False, 'error': 'Username is required'}, status=400)
+        
+        # Check if channel already exists
+        if Channel.objects.filter(username=username).exists():
+            return JsonResponse({'success': False, 'error': 'Channel already exists'}, status=400)
+        
+        # Create channel with username as title (fetcher will update it later)
+        channel = Channel.objects.create(username=username, title=username)
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Channel "@{username}" added successfully! Posts will appear within 1 minute.',
+            'channel': {
+                'username': username,
+                'title': username
+            }
+        })
+                
+    except Exception as e:
+        print(f"Error adding channel: {str(e)}")
+        return JsonResponse({'success': False, 'error': 'Server error'}, status=500)

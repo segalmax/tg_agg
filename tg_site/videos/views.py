@@ -191,6 +191,16 @@ def get_video_url(request, channel, post_id):
         with urllib.request.urlopen(req, timeout=10) as response:
             resp_text = response.read().decode('utf-8')
             resp_status = response.status
+            resp_headers = dict(response.headers)
+        
+        # Debug logging for gazaalannet
+        if channel == 'gazaalannet' and post_id == 72657:
+            print(f"\n=== WEB SERVICE DEBUG ===")
+            print(f"Response length: {len(resp_text)}")
+            print(f"Response headers: {resp_headers}")
+            print(f"Has video tag: {'<video' in resp_text}")
+            print(f"First 300 chars: {resp_text[:300]}")
+            print("=" * 50)
         
         class FakeResp:
             def __init__(self, text, status):

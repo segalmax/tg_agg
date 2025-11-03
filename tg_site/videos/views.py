@@ -5,6 +5,7 @@ from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from .models import Channel, Post
 import requests
+import urllib.request
 import re
 import os
 
@@ -172,19 +173,31 @@ def get_video_url(request, channel, post_id):
     """Fetch video URL from Telegram embed page"""
     try:
         embed_url = f"https://t.me/{channel}/{post_id}?embed=1"
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'Accept-Encoding': 'identity',  # Force uncompressed to avoid gzip corruption
-            'Referer': 'https://t.me/',
-            'DNT': '1',
-            'Connection': 'keep-alive',
-            'Upgrade-Insecure-Requests': '1',
-        }
-        # Use a session to handle cookies properly  
-        session = requests.Session()
-        resp = session.get(embed_url, timeout=10, headers=headers)
+        # Use urllib instead of requests to avoid connection pooling issues
+        req = urllib.request.Request(
+            embed_url,
+            headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.5',
+                'Accept-Encoding': 'identity',  # Force uncompressed
+                'Referer': 'https://t.me/',
+                'DNT': '1',
+                'Connection': 'close',  # Force connection close
+                'Upgrade-Insecure-Requests': '1',
+            }
+        )
+        
+        with urllib.request.urlopen(req, timeout=10) as response:
+            resp_text = response.read().decode('utf-8')
+            resp_status = response.status
+        
+        class FakeResp:
+            def __init__(self, text, status):
+                self.text = text
+                self.status_code = status
+        
+        resp = FakeResp(resp_text, resp_status)
         
         # Extract thumbnail
         thumb_patterns = [

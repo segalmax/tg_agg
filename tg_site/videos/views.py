@@ -189,6 +189,8 @@ def get_video_url(request, channel, post_id):
         if channel == 'gazaalannet' and post_id == 72657:
             print(f"\n===== DEBUG: gazaalannet/{post_id} HTML =====")
             print(f"Status: {resp.status_code}, Length: {len(resp.text)}")
+            print(f"Cookies received: {session.cookies}")
+            print(f"Response headers: {dict(resp.headers)}")
             print(f"First 500 chars:\n{resp.text[:500]}")
             print(f"Video tags: {resp.text.count('<video')}")
             print("=" * 80)

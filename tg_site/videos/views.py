@@ -196,14 +196,17 @@ def get_video_url(request, channel, post_id):
         video_url = None
         
         patterns = [
+            # Most specific first - direct video tag with src
+            r'<video\s+[^>]*?src="([^"]+\.mp4[^"]*)"',
+            r'<video\s+[^>]*?src=\'([^\']+\.mp4[^\']*)\''',
+            
             # JSON-style properties
             r'"file"\s*:\s*"([^"]+\.mp4[^"]*)"',
             r'"video"\s*:\s*"([^"]+\.mp4[^"]*)"',
             r'"url"\s*:\s*"([^"]+\.mp4[^"]*)"',
             r'"src"\s*:\s*"([^"]+\.mp4[^"]*)"',
             
-            # HTML attributes
-            r'<video[^>]+src\s*=\s*["\']([^"\']+\.mp4[^"\']*)["\']',
+            # HTML attributes (less specific)
             r'<source[^>]+src\s*=\s*["\']([^"\']+\.mp4[^"\']*)["\']',
             r'src\s*=\s*["\']([^"\']+\.mp4[^"\']*)["\']',
             
@@ -217,7 +220,7 @@ def get_video_url(request, channel, post_id):
             r'(https?://[^\s"\'<>]+\.mp4(?:\?[^\s"\'<>]*)?)',
         ]
         
-        for pattern in patterns:
+        for i, pattern in enumerate(patterns):
             match = re.search(pattern, resp.text, re.IGNORECASE)
             if match:
                 video_url = match.group(1)
@@ -226,12 +229,15 @@ def get_video_url(request, channel, post_id):
                     video_url = 'https:' + video_url
                 # Unescape if needed
                 video_url = video_url.replace('\\/', '/')
+                print(f"Video fetch OK for {channel}/{post_id} (pattern #{i+1}): {video_url[:80]}")
                 break
         
         if not video_url:
-            print(f"Video fetch FAILED for {channel}/{post_id} - no video found")
-        else:
-            print(f"Video fetch OK for {channel}/{post_id}: {video_url[:80]}")
+            # Debug: check if 'cdn' or 'telesco.pe' exist in response
+            has_cdn = 'cdn' in resp.text.lower()
+            has_telesco = 'telesco.pe' in resp.text
+            has_mp4 = '.mp4' in resp.text
+            print(f"Video fetch FAILED for {channel}/{post_id} - no video found (cdn={has_cdn}, telesco={has_telesco}, mp4={has_mp4}, len={len(resp.text)})")
         
         return JsonResponse({
             'thumbnail': thumbnail,
@@ -239,6 +245,8 @@ def get_video_url(request, channel, post_id):
         })
     except Exception as e:
         print(f"Error fetching video {channel}/{post_id}: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return JsonResponse({'error': 'Failed to fetch video'}, status=500)
 
 

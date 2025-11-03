@@ -186,16 +186,6 @@ def get_video_url(request, channel, post_id):
         session = requests.Session()
         resp = session.get(embed_url, timeout=10, headers=headers)
         
-        # Debug: Save HTML for gazaalannet to see what we're getting
-        if channel == 'gazaalannet' and post_id == 72657:
-            print(f"\n===== DEBUG: gazaalannet/{post_id} HTML =====")
-            print(f"Status: {resp.status_code}, Length: {len(resp.text)}")
-            print(f"Cookies received: {session.cookies}")
-            print(f"Response headers: {dict(resp.headers)}")
-            print(f"First 500 chars:\n{resp.text[:500]}")
-            print(f"Video tags: {resp.text.count('<video')}")
-            print("=" * 80)
-        
         # Extract thumbnail
         thumb_patterns = [
             r"background-image:url\('([^']+)'\)",

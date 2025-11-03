@@ -176,6 +176,7 @@ def get_video_url(request, channel, post_id):
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'identity',  # Force uncompressed to avoid gzip corruption
             'Referer': 'https://t.me/',
             'DNT': '1',
             'Connection': 'keep-alive',
@@ -183,8 +184,6 @@ def get_video_url(request, channel, post_id):
         }
         # Use a session to handle cookies properly  
         session = requests.Session()
-        # Disable automatic gzip decompression which seems to corrupt gazaalannet responses
-        session.headers['Accept-Encoding'] = 'identity'
         resp = session.get(embed_url, timeout=10, headers=headers)
         
         # Debug: Save HTML for gazaalannet to see what we're getting

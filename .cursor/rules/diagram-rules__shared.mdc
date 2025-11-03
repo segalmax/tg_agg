@@ -1,0 +1,13 @@
+---
+description: Diagram rules
+globs:
+alwaysApply: true
+---
+
+- use the maximum features of mermaid diagrams
+- Use components inside components for different systems/ VMs/ dbs / UIs / configs for clarity 
+- Add sequential numbers showing the order of operations (in forked executions do 6a, 6b, etc)
+- Use best conventions for readable diagrams (colors, shapes, etc.)
+- Make diagrams beautiful and professional
+
+

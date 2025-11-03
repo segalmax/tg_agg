@@ -1,0 +1,19 @@
+---
+description: Template for big multi-file, multi-step tasks
+globs: 
+alwaysApply: false
+---
+If this rule is mentioned, work in Big Task flow:
+
+Steps:
+    1. Investigate the code and db thoroughly to understand how to implement the task.
+    2. Ask all the right post-investigation questions. Enumerate each question and provide a default answer, so I can reply like: "a1:yes, a4:no, a5:xx yy"
+    3. Important: object if you don't agree with my design/code ideas! Key is simplicity, readability and conciseness.
+    4. Create 2 docs:
+        - Code documentation: update with every new understanding of the relevant code/db/environment logic. Keep it concise but don't drop important info.
+        - Execution plan: split the task into sub-tasks in a sequential step-by-step strategy. Keep it clear and concise. Investigation can be a subtask.
+    5. Implement the code with surgical, minimal changes possible.
+    6. Test:
+        - Tests should be super short, simple and clear.
+        - Don't reimplement anything that is supposed to be implemented by the tested code itself!
+

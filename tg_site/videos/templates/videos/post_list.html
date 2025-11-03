@@ -552,14 +552,17 @@ async function showVideoModal(card, videoData) {
             video.src = '';
         }, { once: true });
     } else {
-        // Video too large - show fallback
+        // Video extraction failed - use Telegram embed iframe
+        const embedUrl = `https://t.me/${card.dataset.channel}/${card.dataset.post}?embed=1&mode=tme`;
         container.innerHTML = `
-            <div class="fallback-container text-center p-5">
-                <div class="text-white">
-                    <h4 class="mb-3">📹 Video too large to embed</h4>
-                    <p class="mb-4">Telegram doesn't allow embedding large videos</p>
-                </div>
-            </div>
+            <iframe 
+                src="${embedUrl}" 
+                width="100%" 
+                height="500px" 
+                frameborder="0" 
+                scrolling="no"
+                style="background: #000; border-radius: 8px;">
+            </iframe>
         `;
     }
     

@@ -1,0 +1,18 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+If I ask you to teach me something, it means I am new to the topic/code. Follow best pedagogical practices:
+1. I like to learn top-down, use indentation for hierarchy of scripts/classes and code.
+2. Read @diagram-rules__shared.mdc to create clear, detailed diagrams.
+3. Use tables for comparisons and structured information.
+4. Important: use actual variable and function names from code and **reference** them so the learning is not "in the air" (disconnected from actual code).
+5. Be concise!
+6. use clarifying statements like "there are 2 files to focus: x and y in which there are 3 core functions: ..."
+7. It's hard to learn from reading alone, I must study hands on, so give me 2-3 study "assignments" that you think are critical for my understanding of the most important parts of the task: 
+    - go learn that script X structure
+    - learn the settings of job Z
+    - go learn the function foo mechanics
+    - debug the flow of main function in high level and step into function y
+    - understand how the custom_fields' section_num interacts with "f{x}" position colum.

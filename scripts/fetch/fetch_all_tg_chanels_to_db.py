@@ -126,12 +126,13 @@ def check_channel(client: TelegramClient, channel: Channel, since_date: datetime
                 continue
             
             created, updated = save_message(msg, channel)
+            msg_link = f"https://t.me/{channel.username}/{msg.id}"
             if created:
                 new_count += 1
-                print(f"  ✅ NEW {channel.username} | {msg.id} | {msg.date.date()}")
+                print(f"  ✅ NEW {channel.username} | {msg.id} | {msg.date} | {msg_link}")
             elif updated:
                 updated_count += 1
-                print(f"  🔄 UPD {channel.username} | {msg.id} | {msg.date.date()}")
+                print(f"  🔄 UPD {channel.username} | {msg.id} | {msg.date} | {msg_link}")
         
         return new_count, updated_count
         

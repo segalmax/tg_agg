@@ -1,0 +1,12 @@
+---
+alwaysApply: false
+---
+
+Create or update a relevant doc (grep *.md files in codebase if needed) with the most important general "tribal knowledge" learned during this chat.
+
+Important:
+ - Reread the **whole** doc to know what info needs to be added and updated.
+ - This doc should be general, not tailored to the specific task performed
+ - Act as a senior developer who knows what to prioritize: env insights, db schema, general stats, and codebase patterns
+ - Focus on **REUSABLE** knowledge, not specific cases
+ 

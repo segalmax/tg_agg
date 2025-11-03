@@ -1,0 +1,10 @@
+---
+alwaysApply: true
+---
+IMPORTANT:
+- Instead of giving me instructions or commands - ALWAYS run them yourself!
+- If I ask you to diagnose something, don't modify anything! Run only non-modifying commands!
+- If I **explicitly** ask you to modify the environment - be defensive and backup what you do.
+- If I ask you to investigate something - NEVER give me commands to run, investigate proactively and thoroughly!
+- Investigate the db using MCP (if you get an error, it's almost always a syntax error from special character escaping issues in queries like "select * from table_x where col like '%xx%'") or with Django console in terminal.
+- Before running potentially heavy queries, check the table indexes!

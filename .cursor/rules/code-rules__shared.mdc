@@ -1,0 +1,17 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+1. Don't be too defensive! Use fail-fast strategy. Example: if you read a CSV file with pandas and some columns are expected - just expect them to exist and fail ungracefully otherwise. Apply this mindset to make code concise.
+2. Always use a main func to minimize global vars scope.
+3. For command line arguments, use minimalistic style:
+    def parse_daily_feed_options():
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--site_id', type=int)
+        parser.add_argument('--write_ppd_data_only', action="store_true")
+        options = parser.parse_args()
+        return options
+    Note the camel case of the arguments to match the python target var names: "site_id" instead of "site-id"
+4. Use long, self-explanatory variable/function names to make comments redundant.
+    Example: site_id instead of site

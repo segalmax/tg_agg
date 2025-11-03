@@ -198,7 +198,7 @@ def get_video_url(request, channel, post_id):
         patterns = [
             # Most specific first - direct video tag with src
             r'<video\s+[^>]*?src="([^"]+\.mp4[^"]*)"',
-            r'<video\s+[^>]*?src=\'([^\']+\.mp4[^\']*)\''',
+            r"<video\s+[^>]*?src='([^']+\.mp4[^']*)'",
             
             # JSON-style properties
             r'"file"\s*:\s*"([^"]+\.mp4[^"]*)"',

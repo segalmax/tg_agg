@@ -1,42 +1,76 @@
-# Railway Deployment Operations
+# Railway Deployment
 
 ## Services
-- `web`: Django + Gunicorn. Railway start command runs `cd tg_site && python manage.py migrate && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT`.
-- `MySQL`: Managed database provisioned by Railway, volume mounted at `/var/lib/mysql`.
-- `telegram-monitor`: Background fetcher; start command is configured in the Railway UI as `python scripts/fetch/fetch_all_tg_chanels_to_db.py`.
+- `web`: Django + Gunicorn on pgvector DB
+- `telegram-monitor`: Background Telegram fetcher, writes to pgvector DB
+- `pgvector`: PostgreSQL + pgvector extension (production DB)
+- `MySQL`: Legacy, no longer used
 
-## Common CLI Tasks
-- Show current project/services: `railway status --json`.
-- Tail worker logs: `railway logs --service telegram-monitor --lines 100`.
-- Tail web logs: `railway logs --service web --lines 100`.
-- Tail MySQL logs (rarely needed): `railway logs --service mysql --lines 50`.
-- Redeploy after config changes: `railway redeploy --service web` or `--service telegram-monitor`.
+## Start Commands (Railway UI → Deploy section)
+- `web`: `cd tg_site && python manage.py migrate && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT`
+- `telegram-monitor`: `python scripts/fetch/fetch_all_tg_chanels_to_db.py`
 
 ## Environment Variables
-- Manage shared env vars in the Railway dashboard under each service → **Variables**.
-- Web and monitor services rely on `API_ID`, `API_HASH`, `SESSION_STRING`, and Django DB credentials.
-- MySQL credentials are auto-injected (`MYSQL_*`). Use them in local `.env` for parity.
+Both `web` and `telegram-monitor` need:
 
-## Operational Notes
-- The worker should stream logs once per minute when healthy; absence of new entries means the service crashed.
-- When changing the fetch script path, update the Railway UI start command (Deploy section) and redeploy.
-- `railway run --service telegram-monitor -- python -m json.tool` is handy for testing env vars without redeploying.
+| Var | Value |
+|-----|-------|
+| `DB_HOST` | `pgvector.railway.internal` (internal) |
+| `DB_PORT` | `5432` |
+| `DB_NAME` | `railway` |
+| `DB_USER` | `postgres` |
+| `DB_PASSWORD` | from Railway pgvector service |
+| `SECRET_KEY` | Django secret key |
+| `API_ID`, `API_HASH` | Telegram app credentials |
+| `SESSION_STRING` | Telegram session (monitor only) |
+| `ALLOWED_HOSTS` | `web-production-61089.up.railway.app` |
+| `DEBUG` | `False` |
+| `DAYS_BACK` | Optional. Defaults to `7`. Set to `70` temporarily for backfill. |
 
-## Local Development Setup
-To run locally with production data, get Railway credentials:
-1. **Get DB credentials**: `railway variables --service web | grep DB_`
-2. **Get secrets**: `railway variables --service web | grep -E "SECRET_KEY|API_"` 
-3. **Create `.env` file** in `tg_site/` directory with these keys:
-   - `SECRET_KEY`, `DEBUG=True`
-   - `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST` (use `mainline.proxy.rlwy.net`), `DB_PORT`
-   - `API_ID`, `API_HASH`, `SESSION_STRING` (for Telegram fetcher only)
-4. **Start server**: `cd tg_site && source ../.venv/bin/activate && python manage.py runserver`
-5. **Test connection**: `curl -I http://localhost:8000/` should return `200 OK`
-6. **Debug UI**: Use Chrome DevTools MCP to investigate JS issues, check console for errors
-7. **Common issues**: Missing env vars cause `KeyError`, wrong DB host causes connection refused
-8. **Note**: Production uses Railway's internal `mysql.railway.internal`, local dev uses `mainline.proxy.rlwy.net:43278`
+## CLI Cheatsheet
+```bash
+# Check status
+railway status
+
+# View env vars for a service
+railway variables --service web --kv
+railway variables --service telegram-monitor --kv
+
+# Set / unset an env var
+railway variables --service telegram-monitor --set "DAYS_BACK=70"
+railway variables --service telegram-monitor --unset "DAYS_BACK"
+
+# Redeploy
+railway redeploy --service web
+railway redeploy --service telegram-monitor
+
+# Logs (stream)
+railway logs --service web
+railway logs --service telegram-monitor
+```
+
+## Local Development
+```bash
+# 1. Get prod DB credentials
+railway variables --service web --kv | grep DB_
+
+# 2. Create tg_site/.env with:
+#    SECRET_KEY, DEBUG=True
+#    DB_HOST=shinkansen.proxy.rlwy.net, DB_PORT=36019, DB_NAME=railway, DB_USER=postgres, DB_PASSWORD=...
+#    API_ID, API_HASH (optional, for fetcher only)
+
+# 3. Run
+cd tg_site && source ../.venv/bin/activate && python manage.py runserver
+```
+
+## Backfill Procedure
+To backfill historical data (e.g. after switching DB):
+1. `railway variables --service telegram-monitor --set "DAYS_BACK=70"`
+2. Wait ~15 min for fetcher to complete one cycle
+3. `railway variables --service telegram-monitor --unset "DAYS_BACK"`
 
 ## Incident Checklist
-1. Check worker logs for stack traces.
-2. Confirm `when_updated` advancing via Django shell (`python manage.py shell`).
-3. If stuck, redeploy worker and verify the start command still references the fetch script.
+1. Check Railway dashboard — service status and recent deploy logs
+2. Get crash logs via Railway API or `railway logs --service web`
+3. Common causes: missing env var, DB connection failure, bad migration
+4. After env var changes, redeploy the affected service

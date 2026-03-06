@@ -253,14 +253,19 @@ def extract_all_photos(html):
 
 
 def get_video_url(request, channel, post_id):
-    """Fetch media URL(s) from Telegram embed page — handles both videos and photos."""
+    """Fetch media URL(s) from Telegram embed page — handles both videos and photos.
+    Pass ?media_type=photo to skip mp4 extraction (needed for photos in mixed albums,
+    where the embed always contains the album's primary video too).
+    """
     try:
         html = fetch_embed_html(channel, post_id)
         thumbnail = extract_thumbnail(html)
-        videos = extract_all_mp4s(html)
-        if videos:
-            print(f"Media fetch for {channel}/{post_id}: {len(videos)} video(s)")
-            return JsonResponse({'type': 'video', 'thumbnail': thumbnail, 'video': videos[0], 'videos': videos})
+        want_photo = request.GET.get('media_type') == 'photo'
+        if not want_photo:
+            videos = extract_all_mp4s(html)
+            if videos:
+                print(f"Media fetch for {channel}/{post_id}: {len(videos)} video(s)")
+                return JsonResponse({'type': 'video', 'thumbnail': thumbnail, 'video': videos[0], 'videos': videos})
         photos = extract_all_photos(html)
         if photos:
             print(f"Media fetch for {channel}/{post_id}: {len(photos)} photo(s)")

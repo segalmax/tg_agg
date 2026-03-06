@@ -198,10 +198,11 @@ function formatDateTimeFull(isoString) {
     return `${day}/${month}/${year} ${hours}:${minutes}`;
 }
 
-async function getVideoUrl(channel, postId) {
-    const cacheKey = `${channel}/${postId}`;
+async function getVideoUrl(channel, postId, mediaType) {
+    const cacheKey = `${channel}/${postId}/${mediaType || 'auto'}`;
     if (videoCache[cacheKey]) return videoCache[cacheKey];
-    const response = await fetch(`/api/video/${channel}/${postId}/`);
+    const qs = mediaType === 'photo' ? '?media_type=photo' : '';
+    const response = await fetch(`/api/video/${channel}/${postId}/${qs}`);
     const data = await response.json();
     videoCache[cacheKey] = data;
     return data;
@@ -229,7 +230,7 @@ function initCards() {
             let mediaData = null;
             const pickVideoUrl = (data) => (data.videos && data.videos[albumIndex]) ? data.videos[albumIndex] : data.video;
 
-            getVideoUrl(channel, postId).then(data => {
+            getVideoUrl(channel, postId, 'video').then(data => {
                 mediaData = data;
                 if (data.thumbnail && thumbnail) thumbnail.poster = data.thumbnail;
             });
@@ -242,7 +243,7 @@ function initCards() {
 
             card.addEventListener('click', async (e) => {
                 e.stopPropagation();
-                if (!mediaData) mediaData = await getVideoUrl(channel, postId);
+                if (!mediaData) mediaData = await getVideoUrl(channel, postId, 'video');
                 const videoUrl = pickVideoUrl(mediaData);
                 currentModalIndex = index;
                 showVideoModal(card, { ...mediaData, video: videoUrl, videos: [videoUrl] });
@@ -252,11 +253,10 @@ function initCards() {
             const imgEl = card.querySelector('.media-thumbnail');
             let mediaData = null;
 
-            // Lazy-load photo via IntersectionObserver
             const photoObserver = new IntersectionObserver((entries) => {
                 if (!entries[0].isIntersecting) return;
                 photoObserver.disconnect();
-                getVideoUrl(channel, postId).then(data => {
+                getVideoUrl(channel, postId, 'photo').then(data => {
                     mediaData = data;
                     if (data.photo && imgEl) imgEl.src = data.photo;
                 });
@@ -265,7 +265,7 @@ function initCards() {
 
             card.addEventListener('click', async (e) => {
                 e.stopPropagation();
-                if (!mediaData) mediaData = await getVideoUrl(channel, postId);
+                if (!mediaData) mediaData = await getVideoUrl(channel, postId, 'photo');
                 currentModalIndex = index;
                 showPhotoModal(card, mediaData);
             });
@@ -280,7 +280,7 @@ function initCards() {
             if (!previewVideo) return;
             if (entry.isIntersecting) {
                 const idx = parseInt(card.dataset.albumIndex || '0');
-                getVideoUrl(card.dataset.channel, card.dataset.post).then(data => {
+                getVideoUrl(card.dataset.channel, card.dataset.post, 'video').then(data => {
                     const url = (data.videos && data.videos[idx]) ? data.videos[idx] : data.video;
                     if (url && entry.isIntersecting) {
                         previewVideo.src = url;
@@ -380,8 +380,9 @@ async function navigatePost(direction) {
     if (newIndex < 0 || newIndex >= allCards.length) return;
     currentModalIndex = newIndex;
     const newCard = allCards[currentModalIndex];
-    const rawData = await getVideoUrl(newCard.dataset.channel, newCard.dataset.post);
-    if (newCard.dataset.mediaType === 'photo') {
+    const mt = newCard.dataset.mediaType;
+    const rawData = await getVideoUrl(newCard.dataset.channel, newCard.dataset.post, mt);
+    if (mt === 'photo') {
         showPhotoModal(newCard, rawData);
     } else {
         const idx = parseInt(newCard.dataset.albumIndex || '0');

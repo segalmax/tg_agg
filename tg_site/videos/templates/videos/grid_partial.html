@@ -23,7 +23,7 @@
              data-album-size="{{ post.video_data.album_ids|length }}">
             <div class="position-relative">
                 <video class="card-img-top video-thumbnail" preload="none"></video>
-                <video class="preview-video d-none d-md-block" muted loop preload="none"></video>
+                <video class="preview-video" muted loop preload="none"></video>
             </div>
             <div class="card-body p-2">
                 <p class="card-text small mb-1" style="height: 40px; overflow: hidden; line-height: 1.3;">
@@ -55,7 +55,7 @@
             <div class="position-relative">
                 {% if post.video_data %}
                 <video class="card-img-top video-thumbnail" preload="none"></video>
-                <video class="preview-video d-none d-md-block" muted loop preload="none"></video>
+                <video class="preview-video" muted loop preload="none"></video>
                 {% else %}
                 <div class="card-img-top video-thumbnail bg-secondary d-flex align-items-center justify-content-center text-white">
                     <span style="font-size: 48px;">📷</span>

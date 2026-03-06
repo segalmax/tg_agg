@@ -135,20 +135,6 @@
     </div>
 </div>
 
-<!-- Mobile Swipe Navigation -->
-{% if prev_post %}
-<a href="{% url 'post_detail' prev_post.0 prev_post.1 %}?{{ query_string|slice:'1:' }}" 
-   class="swipe-nav swipe-nav-prev d-md-none">
-    ◀
-</a>
-{% endif %}
-
-{% if next_post %}
-<a href="{% url 'post_detail' next_post.0 next_post.1 %}?{{ query_string|slice:'1:' }}" 
-   class="swipe-nav swipe-nav-next d-md-none">
-    ▶
-</a>
-{% endif %}
 {% endblock %}
 
 {% block extra_js %}

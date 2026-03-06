@@ -44,13 +44,19 @@
 {% block content %}
 <div class="container-fluid">
     <div class="row">
-        <!-- Desktop Sidebar (hidden on mobile) -->
-        <div class="col-md-3 col-lg-2 d-none d-md-block bg-white p-3 sticky-top" style="top: 56px; height: calc(100vh - 56px); overflow-y: auto;">
+        <!-- Sidebar -->
+        <div class="col-md-3 col-lg-2 bg-white p-3 sticky-top d-none d-md-block" style="top: 56px; height: calc(100vh - 56px); overflow-y: auto;">
             {% include 'videos/filter_form.html' %}
         </div>
-        
+
+        <!-- Desktop-only notice on small screens -->
+        <div class="d-md-none text-center py-5 w-100">
+            <h4>🖥️ Desktop only</h4>
+            <p class="text-muted">Please open this site on a desktop browser.</p>
+        </div>
+
         <!-- Main Content -->
-        <div class="col-12 col-md-9 col-lg-10">
+        <div class="col-md-9 col-lg-10 d-none d-md-block">
             <div class="container-fluid py-3">
                 {% if channel %}
                 <div class="alert alert-info">
@@ -64,22 +70,6 @@
                 </div>
             </div>
         </div>
-    </div>
-</div>
-
-<!-- Mobile Filter Button -->
-<button class="btn btn-primary btn-filter d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#filterOffcanvas">
-    🔍 Filters
-</button>
-
-<!-- Mobile Offcanvas Filters -->
-<div class="offcanvas offcanvas-end" tabindex="-1" id="filterOffcanvas">
-    <div class="offcanvas-header">
-        <h5 class="offcanvas-title">Filters</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
-    </div>
-    <div class="offcanvas-body">
-        {% include 'videos/filter_form.html' %}
     </div>
 </div>
 
@@ -248,25 +238,8 @@ function initCards() {
             e.stopPropagation();
             if (!videoData) videoData = await getVideoUrl(channel, postId);
             const videoUrl = pickUrl(videoData);
-            const isMobile = window.innerWidth < 768;
-
-            if (isMobile) {
-                if (videoUrl) {
-                    const tempVideo = document.createElement('video');
-                    tempVideo.src = videoUrl;
-                    tempVideo.controls = true;
-                    Object.assign(tempVideo.style, { position: 'fixed', top: '0', left: '0', width: '100vw', height: '100vh', zIndex: '9999', backgroundColor: '#000' });
-                    document.body.appendChild(tempVideo);
-                    tempVideo.requestFullscreen().then(() => tempVideo.play()).catch(() => tempVideo.play());
-                    tempVideo.addEventListener('ended', () => { document.exitFullscreen().catch(() => {}); tempVideo.remove(); });
-                    tempVideo.addEventListener('pause', () => { setTimeout(() => { document.exitFullscreen().catch(() => {}); tempVideo.remove(); }, 100); });
-                } else {
-                    window.open(card.dataset.link, '_blank');
-                }
-            } else {
-                currentModalIndex = index;
-                showVideoModal(card, { ...videoData, video: videoUrl, videos: [videoUrl] });
-            }
+            currentModalIndex = index;
+            showVideoModal(card, { ...videoData, video: videoUrl, videos: [videoUrl] });
         });
     });
 

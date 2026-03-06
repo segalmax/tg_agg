@@ -31,12 +31,16 @@ CHECK_INTERVAL = 60  # seconds
 RATE_LIMIT_DELAY = 2  # seconds between channels
 
 
-def build_video_data(msg: Message, album_ids: list[int] | None = None) -> dict | None:
-    if not (hasattr(msg.media, "document") and msg.media.document):
+def build_media_data(msg: Message, album_ids: list[int] | None = None) -> dict | None:
+    is_album = album_ids and len(album_ids) > 1
+    if hasattr(msg.media, "document") and msg.media.document:
+        doc = msg.media.document
+        data = {"duration": getattr(doc, "duration", None), "size": getattr(doc, "size", None)}
+    elif type(msg.media).__name__ == "MessageMediaPhoto" and is_album:
+        data = {}  # photo album — only needs album_ids, no extra fields
+    else:
         return None
-    doc = msg.media.document
-    data = {"duration": getattr(doc, "duration", None), "size": getattr(doc, "size", None)}
-    if album_ids and len(album_ids) > 1:
+    if is_album:
         data["album_ids"] = album_ids
     return data
 
@@ -67,7 +71,7 @@ def save_message(msg: Message, channel: Channel) -> tuple[bool, bool]:
     msg_views = getattr(msg, "views", 0) or 0
     if msg_views == 1:
         return False, False
-    return upsert_post(msg, channel, build_video_data(msg))
+    return upsert_post(msg, channel, build_media_data(msg))
 
 
 def save_album(primary_msg: Message, album_msgs: list[Message], channel: Channel) -> tuple[bool, bool]:
@@ -75,7 +79,7 @@ def save_album(primary_msg: Message, album_msgs: list[Message], channel: Channel
     if primary_views == 1:
         return False, False
     album_ids = [m.id for m in album_msgs]
-    video_data = build_video_data(primary_msg, album_ids)
+    video_data = build_media_data(primary_msg, album_ids)
     # Use highest view count from any album message
     max_views = max((getattr(m, "views", 0) or 0) for m in album_msgs)
     primary_msg.views = max_views

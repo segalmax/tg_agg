@@ -35,7 +35,7 @@ def home(request):
     # Media filter
     media_filter = request.GET.get('media', 'video').strip()
     if media_filter == 'video':
-        additional_filters &= Q(video_data__isnull=False)
+        additional_filters &= Q(media_type='MessageMediaDocument')
     elif media_filter == 'photo':
         additional_filters &= Q(media_type='MessageMediaPhoto')
     elif media_filter == 'has_media':
@@ -240,19 +240,35 @@ def extract_thumbnail(html):
     return None
 
 
+def extract_all_photos(html):
+    """Extract Telegram CDN photo URLs from embed HTML, deduplicating by filename."""
+    seen = set()
+    photos = []
+    for url in re.findall(r"background-image:url\('(https://cdn[^']+\.(?:jpg|jpeg|png|webp)[^']*)'\)", html):
+        filename = url.split('/')[-1].split('?')[0]
+        if filename not in seen:
+            seen.add(filename)
+            photos.append(url)
+    return photos
+
+
 def get_video_url(request, channel, post_id):
-    """Fetch video URL(s) from Telegram embed page.
-    The primary embed page already contains all album videos in order — extract all unique filenames.
-    """
+    """Fetch media URL(s) from Telegram embed page — handles both videos and photos."""
     try:
         html = fetch_embed_html(channel, post_id)
         thumbnail = extract_thumbnail(html)
         videos = extract_all_mp4s(html)
-        video_url = videos[0] if videos else None
-        print(f"Video fetch for {channel}/{post_id}: {len(videos)} video(s)")
-        return JsonResponse({'thumbnail': thumbnail, 'video': video_url, 'videos': videos})
+        if videos:
+            print(f"Media fetch for {channel}/{post_id}: {len(videos)} video(s)")
+            return JsonResponse({'type': 'video', 'thumbnail': thumbnail, 'video': videos[0], 'videos': videos})
+        photos = extract_all_photos(html)
+        if photos:
+            print(f"Media fetch for {channel}/{post_id}: {len(photos)} photo(s)")
+            return JsonResponse({'type': 'photo', 'thumbnail': photos[0], 'photo': photos[0], 'photos': photos})
+        print(f"Media fetch for {channel}/{post_id}: nothing found")
+        return JsonResponse({'type': 'none', 'thumbnail': thumbnail})
     except Exception as e:
-        print(f"Error fetching video {channel}/{post_id}: {e}")
+        print(f"Error fetching media {channel}/{post_id}: {e}")
         return JsonResponse({'error': str(e)}, status=500)
 
 

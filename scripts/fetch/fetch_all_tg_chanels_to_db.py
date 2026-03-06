@@ -26,7 +26,7 @@ from telethon.sessions import StringSession
 from telethon.tl.types import Message
 
 # Configuration
-DAYS_BACK = 7  # Always fetch last 7 days
+DAYS_BACK = 70  # Temporary backfill: covers Dec 2025 → Mar 2026 gap; set back to 7 after one cycle
 CHECK_INTERVAL = 60  # seconds
 RATE_LIMIT_DELAY = 2  # seconds between channels
 

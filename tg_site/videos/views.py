@@ -218,10 +218,17 @@ def fetch_embed_html(channel, msg_id):
         return response.read().decode('utf-8')
 
 
-def extract_first_mp4(html):
+def extract_all_mp4s(html):
+    """Extract all unique MP4 URLs from HTML, deduplicating by filename."""
+    seen = set()
+    videos = []
     for raw_url in re.findall(r'(https?://[^\s"\'<>]+\.mp4(?:\?[^\s"\'<>]*)?)', html, re.IGNORECASE):
-        return raw_url.replace('\\/', '/')
-    return None
+        url = raw_url.replace('\\/', '/')
+        filename = url.split('/')[-1].split('?')[0]
+        if filename not in seen:
+            seen.add(filename)
+            videos.append(url)
+    return videos
 
 
 def extract_thumbnail(html):
@@ -234,27 +241,15 @@ def extract_thumbnail(html):
 
 
 def get_video_url(request, channel, post_id):
-    """Fetch video URL(s) from Telegram embed page. For albums, fetches each album_id separately."""
-    post = get_object_or_404(Post, channel__username=channel, telegram_id=post_id)
-    album_ids = (post.video_data or {}).get('album_ids')
-
-    primary_html = fetch_embed_html(channel, post_id)
-    thumbnail = extract_thumbnail(primary_html)
-
-    if album_ids:
-        videos = []
-        for aid in album_ids:
-            html = fetch_embed_html(channel, aid) if aid != post_id else primary_html
-            videos.append(extract_first_mp4(html))
-        print(f"Album fetch for {channel}/{post_id}: {len(videos)} video(s) from {len(album_ids)} album_ids")
-        return JsonResponse({'thumbnail': thumbnail, 'video': videos[0], 'videos': videos})
-
-    url = extract_first_mp4(primary_html)
-    if url:
-        print(f"Video fetch OK for {channel}/{post_id}: {url[:80]}")
-    else:
-        print(f"Video fetch FAILED for {channel}/{post_id} (len={len(primary_html)})")
-    return JsonResponse({'thumbnail': thumbnail, 'video': url, 'videos': [url] if url else []})
+    """Fetch video URL(s) from Telegram embed page.
+    The primary embed page already contains all album videos in order — extract all unique filenames.
+    """
+    html = fetch_embed_html(channel, post_id)
+    thumbnail = extract_thumbnail(html)
+    videos = extract_all_mp4s(html)
+    video_url = videos[0] if videos else None
+    print(f"Video fetch for {channel}/{post_id}: {len(videos)} video(s)")
+    return JsonResponse({'thumbnail': thumbnail, 'video': video_url, 'videos': videos})
 
 
 @require_http_methods(["POST"])

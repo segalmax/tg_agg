@@ -101,11 +101,6 @@ class Post(models.Model):
     def __str__(self):
         return f"{self.channel.username} - {self.telegram_id}"
     
-    def save(self, *args, **kwargs):
-        if self.text and not self.embedding:
-            self.embedding = EmbeddingGenerator.generate_embedding(self.text)
-        super().save(*args, **kwargs)
-    
     @classmethod
     def semantic_search(cls, query_text, limit=10, filters=None):
         """

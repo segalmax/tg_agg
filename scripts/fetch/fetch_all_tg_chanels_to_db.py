@@ -10,6 +10,7 @@ Designed to run on Railway as a background service.
 import os
 import sys
 import time
+from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
 # Django setup
@@ -30,29 +31,18 @@ CHECK_INTERVAL = 60  # seconds
 RATE_LIMIT_DELAY = 2  # seconds between channels
 
 
-def save_message(msg: Message, channel: Channel) -> tuple[bool, bool]:
-    """
-    Upsert message into database.
-    Returns (created, updated) - True if new post, True if existing post was updated.
-    """
-    # Skip posts with views=1 (duplicate/edit posts)
+def build_video_data(msg: Message, album_ids: list[int] | None = None) -> dict | None:
+    if not (hasattr(msg.media, "document") and msg.media.document):
+        return None
+    doc = msg.media.document
+    data = {"duration": getattr(doc, "duration", None), "size": getattr(doc, "size", None)}
+    if album_ids and len(album_ids) > 1:
+        data["album_ids"] = album_ids
+    return data
+
+
+def upsert_post(msg: Message, channel: Channel, video_data) -> tuple[bool, bool]:
     msg_views = getattr(msg, "views", 0) or 0
-    if msg_views == 1:
-        return False, False
-    
-    media_type = None
-    video_data = None
-    has_media = bool(msg.media)
-
-    if msg.media:
-        media_type = type(msg.media).__name__
-        if hasattr(msg.media, "document") and msg.media.document:
-            doc = msg.media.document
-            video_data = {
-                "duration": getattr(doc, "duration", None),
-                "size": getattr(doc, "size", None),
-            }
-
     now = datetime.now(timezone.utc)
     defaults = {
         "date": msg.date.astimezone(timezone.utc),
@@ -61,21 +51,41 @@ def save_message(msg: Message, channel: Channel) -> tuple[bool, bool]:
         "forwards": getattr(msg, "forwards", 0) or 0,
         "replies": getattr(msg.replies, "replies", 0) if msg.replies else 0,
         "link": f"https://t.me/{channel.username}/{msg.id}",
-        "has_media": has_media,
-        "media_type": media_type,
+        "has_media": bool(msg.media),
+        "media_type": type(msg.media).__name__ if msg.media else None,
         "video_data": video_data,
     }
-
-    post, created = Post.objects.update_or_create(
-        channel=channel, telegram_id=msg.id, defaults=defaults
-    )
-    
+    post, created = Post.objects.update_or_create(channel=channel, telegram_id=msg.id, defaults=defaults)
     if created:
         return True, False
-
     post.when_updated = now
     post.save(update_fields=["when_updated"])
     return False, True
+
+
+def save_message(msg: Message, channel: Channel) -> tuple[bool, bool]:
+    msg_views = getattr(msg, "views", 0) or 0
+    if msg_views == 1:
+        return False, False
+    return upsert_post(msg, channel, build_video_data(msg))
+
+
+def save_album(primary_msg: Message, album_msgs: list[Message], channel: Channel) -> tuple[bool, bool]:
+    primary_views = getattr(primary_msg, "views", 0) or 0
+    if primary_views == 1:
+        return False, False
+    album_ids = [m.id for m in album_msgs]
+    video_data = build_video_data(primary_msg, album_ids)
+    # Use highest view count from any album message
+    max_views = max((getattr(m, "views", 0) or 0) for m in album_msgs)
+    primary_msg.views = max_views
+    result = upsert_post(primary_msg, channel, video_data)
+    # Remove any previously-saved secondary album posts
+    secondary_ids = album_ids[1:]
+    deleted, _ = Post.objects.filter(channel=channel, telegram_id__in=secondary_ids).delete()
+    if deleted:
+        print(f"  🗑️  Removed {deleted} secondary album posts for album starting at {primary_msg.id}")
+    return result
 
 
 def check_channel(client: TelegramClient, channel: Channel, since_date: datetime) -> tuple[int, int]:
@@ -118,21 +128,37 @@ def check_channel(client: TelegramClient, channel: Channel, since_date: datetime
             # Set offset to oldest message ID for next batch
             offset_id = batch[-1].id
         
-        # Process all messages (both new and existing)
+        # Group messages: standalone vs albums (grouped_id)
+        albums: dict[int, list] = defaultdict(list)
+        standalone = []
         for msg in messages:
-            # Skip if older than since_date (safety check)
             msg_date = msg.date.replace(tzinfo=timezone.utc) if msg.date.tzinfo is None else msg.date
             if msg_date < since_date:
                 continue
-            
-            created, updated = save_message(msg, channel)
-            msg_link = f"https://t.me/{channel.username}/{msg.id}"
+            if msg.grouped_id:
+                albums[msg.grouped_id].append(msg)
+            else:
+                standalone.append(msg)
+
+        def log_result(created, updated, msg_id, msg_date):
+            nonlocal new_count, updated_count
+            msg_link = f"https://t.me/{channel.username}/{msg_id}"
             if created:
                 new_count += 1
-                print(f"  ✅ NEW {channel.username} | {msg.id} | {msg.date} | {msg_link}")
+                print(f"  ✅ NEW {channel.username} | {msg_id} | {msg_date} | {msg_link}")
             elif updated:
                 updated_count += 1
-                print(f"  🔄 UPD {channel.username} | {msg.id} | {msg.date} | {msg_link}")
+                print(f"  🔄 UPD {channel.username} | {msg_id} | {msg_date} | {msg_link}")
+
+        for msg in standalone:
+            created, updated = save_message(msg, channel)
+            log_result(created, updated, msg.id, msg.date)
+
+        for grouped_id, group_msgs in albums.items():
+            group_msgs.sort(key=lambda m: m.id)
+            primary = group_msgs[0]
+            created, updated = save_album(primary, group_msgs, channel)
+            log_result(created, updated, primary.id, primary.date)
         
         return new_count, updated_count
         

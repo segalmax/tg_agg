@@ -58,92 +58,10 @@
                 </div>
                 {% endif %}
                 
-                <!-- Results Counter -->
-                <div class="results-counter">
-                    <strong>Showing {{ total_count|default:page_obj.paginator.count }} posts</strong>
+                <!-- Swappable grid region -->
+                <div id="grid-container">
+                    {% include 'videos/grid_partial.html' %}
                 </div>
-                
-                <!-- Filter Chips -->
-                <div class="filter-chips" id="filterChips">
-                    <!-- Dynamically populated by JavaScript -->
-                </div>
-                
-                <!-- Video Grid: 2 cols mobile, 5 cols desktop (with wider cards) -->
-                <div class="row row-cols-2 row-cols-lg-4 row-cols-xl-5 g-4">
-                    {% for post in page_obj %}
-                    <div class="col">
-                        <div class="card video-card h-100" 
-                             data-channel="{{ post.channel.username }}" 
-                             data-post="{{ post.telegram_id }}"
-                             data-link="{{ post.link }}"
-                             data-text="{{ post.text|escape }}"
-                             data-views="{{ post.views|default:'0' }}"
-                             data-has-video="{{ post.video_data|yesno:'true,false' }}">
-                            <div class="position-relative">
-                                {% if post.video_data %}
-                                <!-- Static thumbnail -->
-                                <video class="card-img-top video-thumbnail" 
-                                       preload="none">
-                                </video>
-                                <!-- Hover preview video (desktop only) -->
-                                <video class="preview-video d-none d-md-block" 
-                                       muted 
-                                       loop 
-                                       preload="none">
-                                </video>
-                                {% else %}
-                                <div class="card-img-top video-thumbnail bg-secondary d-flex align-items-center justify-content-center text-white">
-                                    <span style="font-size: 48px;">📷</span>
-                                </div>
-                                {% endif %}
-                            </div>
-                            <div class="card-body p-2">
-                                <p class="card-text small mb-1" style="height: 40px; overflow: hidden; line-height: 1.3;">
-                                    {{ post.text|truncatewords:10 }}
-                                </p>
-                                <div class="text-muted" style="font-size: 0.75rem;">
-                                    <div>👁 {{ post.views|default:"0" }}</div>
-                                    <div>{{ post.channel.username }}</div>
-                                    <div class="post-datetime" data-datetime="{{ post.date.isoformat }}"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    {% empty %}
-                    <div class="col-12">
-                        <div class="alert alert-warning">No posts found.</div>
-                    </div>
-                    {% endfor %}
-                </div>
-                
-                <!-- Pagination -->
-                {% if page_obj.paginator.num_pages > 1 %}
-                <nav aria-label="Page navigation" class="mt-4">
-                    <ul class="pagination justify-content-center">
-                        {% if page_obj.has_previous %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page=1{{ query_string }}">First</a>
-                        </li>
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{{ query_string }}">Previous</a>
-                        </li>
-                        {% endif %}
-                        
-                        <li class="page-item disabled">
-                            <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
-                        </li>
-                        
-                        {% if page_obj.has_next %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{{ query_string }}">Next</a>
-                        </li>
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{{ query_string }}">Last</a>
-                        </li>
-                        {% endif %}
-                    </ul>
-                </nav>
-                {% endif %}
             </div>
         </div>
     </div>
@@ -203,82 +121,40 @@
 function renderFilterChips() {
     const chipsContainer = document.getElementById('filterChips');
     if (!chipsContainer) return;
-    
+
     const chips = [];
     const urlParams = new URLSearchParams(window.location.search);
-    
-    // Search query
+
     const searchQuery = urlParams.get('q');
-    if (searchQuery) {
-        chips.push({
-            label: `Search: "${searchQuery}"`,
-            param: 'q'
-        });
-    }
-    
-    // Channels
+    if (searchQuery) chips.push({ label: `Search: "${searchQuery}"`, param: 'q' });
+
     const channels = urlParams.get('channels');
     if (channels) {
-        const channelList = channels.split(',').filter(c => c.trim());
-        channelList.forEach(channel => {
-            chips.push({
-                label: `📺 ${channel}`,
-                param: 'channels',
-                value: channel
-            });
+        channels.split(',').filter(c => c.trim()).forEach(channel => {
+            chips.push({ label: `📺 ${channel}`, param: 'channels', value: channel });
         });
     }
-    
-    // Media type (only show if not default 'video')
+
     const media = urlParams.get('media') || 'video';
     if (media !== 'video') {
-        const mediaLabels = {
-            'all': 'All posts',
-            'photo': 'Photos only',
-            'has_media': 'Has media'
-        };
-        chips.push({
-            label: `🎬 ${mediaLabels[media] || media}`,
-            param: 'media'
-        });
+        const mediaLabels = { 'all': 'All posts', 'photo': 'Photos only', 'has_media': 'Has media' };
+        chips.push({ label: `🎬 ${mediaLabels[media] || media}`, param: 'media' });
     }
-    
-    // Date range
+
     const dateFrom = urlParams.get('date_from');
     const dateTo = urlParams.get('date_to');
     if (dateFrom || dateTo) {
-        const label = dateFrom && dateTo 
-            ? `📅 ${dateFrom} to ${dateTo}`
-            : dateFrom 
-                ? `📅 From ${dateFrom}`
-                : `📅 Until ${dateTo}`;
-        chips.push({
-            label: label,
-            param: 'date_range'
-        });
+        const label = dateFrom && dateTo ? `📅 ${dateFrom} to ${dateTo}`
+            : dateFrom ? `📅 From ${dateFrom}` : `📅 Until ${dateTo}`;
+        chips.push({ label, param: 'date_range' });
     }
-    
-    // Sort (only show if not default '-date')
+
     const sort = urlParams.get('sort') || '-date';
     if (sort !== '-date') {
-        const sortLabels = {
-            'date': 'Oldest First',
-            '-views': 'Most Views',
-            '-forwards': 'Most Forwards',
-            '-replies': 'Most Replies'
-        };
-        chips.push({
-            label: `⬆️ ${sortLabels[sort] || sort}`,
-            param: 'sort'
-        });
+        const sortLabels = { 'date': 'Oldest First', '-views': 'Most Views', '-forwards': 'Most Forwards', '-replies': 'Most Replies' };
+        chips.push({ label: `⬆️ ${sortLabels[sort] || sort}`, param: 'sort' });
     }
-    
-    // Render chips
-    if (chips.length === 0) {
-        chipsContainer.innerHTML = '';
-        return;
-    }
-    
+
     chipsContainer.innerHTML = chips.map(chip => `
         <div class="filter-chip">
             ${chip.label}
@@ -288,53 +164,33 @@ function renderFilterChips() {
 }
 
 function removeFilterChip(param, value) {
-    const urlParams = new URLSearchParams(window.location.search);
-    
     if (param === 'channels' && value) {
-        // Remove specific channel from list
-        const channels = (urlParams.get('channels') || '').split(',').filter(c => c.trim());
-        const newChannels = channels.filter(c => c !== value);
-        if (newChannels.length > 0) {
-            urlParams.set('channels', newChannels.join(','));
-        } else {
-            urlParams.delete('channels');
-        }
+        const input = document.getElementById('channelsInput');
+        const newChannels = (input.value || '').split(',').filter(c => c.trim() && c !== value);
+        input.value = newChannels.join(',');
+        document.querySelectorAll(`.channel-checkbox[value="${value}"]`).forEach(cb => cb.checked = false);
+        if (typeof updateChannelDropdownLabel === 'function') updateChannelDropdownLabel();
     } else if (param === 'date_range') {
-        urlParams.delete('date_from');
-        urlParams.delete('date_to');
-    } else {
-        urlParams.delete(param);
+        document.getElementById('dateFrom').value = '';
+        document.getElementById('dateTo').value = '';
+    } else if (param === 'q') {
+        document.getElementById('searchInput').value = '';
+    } else if (param === 'media') {
+        document.querySelector('input[name="media"][value="video"]').checked = true;
+    } else if (param === 'sort') {
+        document.getElementById('sortSelect').value = '-date';
     }
-    
-    // If removing media, set it back to default 'video'
-    if (param === 'media') {
-        urlParams.set('media', 'video');
-    }
-    
-    // Redirect
-    const newUrl = urlParams.toString() ? `?${urlParams.toString()}` : '/';
-    window.location.href = newUrl;
+    if (typeof updateClearAllButton === 'function') updateClearAllButton();
+    htmxRefresh();
 }
 
-// Render chips on page load
-renderFilterChips();
-
 // ====== Video Functionality ======
-// Store video URLs to avoid re-fetching
 const videoCache = {};
 let currentModalCard = null;
 let allCards = [];
 let currentModalIndex = -1;
-let gridVideos = new Map(); // Track grid videos for autoplay
-
-// Format datetime
-function formatDateTime(isoString) {
-    const date = new Date(isoString);
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
-}
+let gridVideos = new Map();
+let videoObserver = null;
 
 function formatDateTimeFull(isoString) {
     const date = new Date(isoString);
@@ -346,154 +202,101 @@ function formatDateTimeFull(isoString) {
     return `${day}/${month}/${year} ${hours}:${minutes}`;
 }
 
-document.querySelectorAll('.post-datetime').forEach(el => {
-    el.textContent = formatDateTime(el.dataset.datetime);
-});
-
-// Fetch video URL and cache it
 async function getVideoUrl(channel, postId) {
     const cacheKey = `${channel}/${postId}`;
-    if (videoCache[cacheKey]) {
-        return videoCache[cacheKey];
-    }
-    
-    try {
-        const response = await fetch(`/api/video/${channel}/${postId}/`);
-        const data = await response.json();
-        videoCache[cacheKey] = data;
-        return data;
-    } catch (err) {
-        console.error(`Failed to load video ${cacheKey}:`, err);
-        return { video: null, thumbnail: null };
-    }
+    if (videoCache[cacheKey]) return videoCache[cacheKey];
+    const response = await fetch(`/api/video/${channel}/${postId}/`);
+    const data = await response.json();
+    videoCache[cacheKey] = data;
+    return data;
 }
 
-// Initialize all video cards
-allCards = Array.from(document.querySelectorAll('.video-card'));
+function initCards() {
+    if (videoObserver) videoObserver.disconnect();
+    gridVideos = new Map();
 
-allCards.forEach((card, index) => {
-    const channel = card.dataset.channel;
-    const postId = card.dataset.post;
-    const hasVideo = card.dataset.hasVideo === 'true';
-    
-    if (!hasVideo) return;
-    
-    const thumbnail = card.querySelector('.video-thumbnail');
-    const previewVideo = card.querySelector('.preview-video');
-    let videoData = null;
-    
-    // Load thumbnail immediately
-    getVideoUrl(channel, postId).then(data => {
-        videoData = data;
-        if (data.thumbnail && thumbnail) {
-            thumbnail.poster = data.thumbnail;
-        }
+    document.querySelectorAll('.post-datetime').forEach(el => {
+        el.textContent = formatDateTimeFull(el.dataset.datetime);
     });
-    
-    // Store preview video element for grid autoplay
-    if (previewVideo) {
-        gridVideos.set(card, previewVideo);
-    }
-    
-    // Click handler for modal (desktop) or fullscreen (mobile)
-    card.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        
-        if (!videoData) {
-            videoData = await getVideoUrl(channel, postId);
+
+    allCards = Array.from(document.querySelectorAll('.video-card'));
+
+    allCards.forEach((card, index) => {
+        const channel = card.dataset.channel;
+        const postId = card.dataset.post;
+        const hasVideo = card.dataset.hasVideo === 'true';
+        const albumIndex = parseInt(card.dataset.albumIndex || '0');
+        if (!hasVideo) return;
+
+        const thumbnail = card.querySelector('.video-thumbnail');
+        const previewVideo = card.querySelector('.preview-video');
+        let videoData = null;
+        const pickUrl = (data) => (data.videos && data.videos[albumIndex]) ? data.videos[albumIndex] : data.video;
+
+        getVideoUrl(channel, postId).then(data => {
+            videoData = data;
+            if (data.thumbnail && thumbnail) thumbnail.poster = data.thumbnail;
+        });
+
+        if (previewVideo) {
+            gridVideos.set(card, previewVideo);
+            previewVideo.addEventListener('mouseenter', () => { previewVideo.controls = true; });
+            previewVideo.addEventListener('mouseleave', () => { previewVideo.controls = false; });
         }
-        
-        const isMobile = window.innerWidth < 768;
-        
-        if (isMobile) {
-            // Mobile: try to play fullscreen directly
-            if (videoData.video) {
-                const tempVideo = document.createElement('video');
-                tempVideo.src = videoData.video;
-                tempVideo.controls = true;
-                tempVideo.style.position = 'fixed';
-                tempVideo.style.top = '0';
-                tempVideo.style.left = '0';
-                tempVideo.style.width = '100vw';
-                tempVideo.style.height = '100vh';
-                tempVideo.style.zIndex = '9999';
-                tempVideo.style.backgroundColor = '#000';
-                
-                document.body.appendChild(tempVideo);
-                
-                tempVideo.requestFullscreen().then(() => {
-                    tempVideo.play();
-                }).catch(() => {
-                    // Fallback if fullscreen fails
-                    tempVideo.play();
-                });
-                
-                tempVideo.addEventListener('ended', () => {
-                    document.exitFullscreen().catch(() => {});
-                    tempVideo.remove();
-                });
-                
-                tempVideo.addEventListener('pause', () => {
-                    setTimeout(() => {
-                        document.exitFullscreen().catch(() => {});
-                        tempVideo.remove();
-                    }, 100);
+
+        card.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            if (!videoData) videoData = await getVideoUrl(channel, postId);
+            const videoUrl = pickUrl(videoData);
+            const isMobile = window.innerWidth < 768;
+
+            if (isMobile) {
+                if (videoUrl) {
+                    const tempVideo = document.createElement('video');
+                    tempVideo.src = videoUrl;
+                    tempVideo.controls = true;
+                    Object.assign(tempVideo.style, { position: 'fixed', top: '0', left: '0', width: '100vw', height: '100vh', zIndex: '9999', backgroundColor: '#000' });
+                    document.body.appendChild(tempVideo);
+                    tempVideo.requestFullscreen().then(() => tempVideo.play()).catch(() => tempVideo.play());
+                    tempVideo.addEventListener('ended', () => { document.exitFullscreen().catch(() => {}); tempVideo.remove(); });
+                    tempVideo.addEventListener('pause', () => { setTimeout(() => { document.exitFullscreen().catch(() => {}); tempVideo.remove(); }, 100); });
+                } else {
+                    window.open(card.dataset.link, '_blank');
+                }
+            } else {
+                currentModalIndex = index;
+                showVideoModal(card, { ...videoData, video: videoUrl, videos: [videoUrl] });
+            }
+        });
+    });
+
+    videoObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            const card = entry.target;
+            const previewVideo = gridVideos.get(card);
+            if (!previewVideo) return;
+            if (entry.isIntersecting) {
+                const idx = parseInt(card.dataset.albumIndex || '0');
+                getVideoUrl(card.dataset.channel, card.dataset.post).then(data => {
+                    const url = (data.videos && data.videos[idx]) ? data.videos[idx] : data.video;
+                    if (url && entry.isIntersecting) {
+                        previewVideo.src = url;
+                        previewVideo.muted = true;
+                        previewVideo.loop = true;
+                        previewVideo.play().catch(() => {});
+                    }
                 });
             } else {
-                // No video available - open Telegram
-                window.open(card.dataset.link, '_blank');
+                previewVideo.pause();
+                previewVideo.src = '';
             }
-        } else {
-            // Desktop: show modal
-            currentModalIndex = index;
-            showVideoModal(card, videoData);
-        }
+        });
+    }, { root: null, rootMargin: '0px', threshold: 0.01 });
+
+    allCards.forEach(card => {
+        if (card.dataset.hasVideo === 'true') videoObserver.observe(card);
     });
-});
-
-// IntersectionObserver for grid video autoplay (muted, in viewport)
-const observerOptions = {
-    root: null,
-    rootMargin: '0px',
-    threshold: 0.5 // 50% visible
-};
-
-const videoObserver = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-        const card = entry.target;
-        const previewVideo = gridVideos.get(card);
-        
-        if (!previewVideo) return;
-        
-        if (entry.isIntersecting) {
-            // Load and play video when visible
-            const channel = card.dataset.channel;
-            const postId = card.dataset.post;
-            
-            getVideoUrl(channel, postId).then(data => {
-                if (data.video && entry.isIntersecting) {
-                    previewVideo.src = data.video;
-                    previewVideo.muted = true;
-                    previewVideo.loop = true;
-                    previewVideo.play().catch(err => {
-                        console.log('Autoplay failed:', err);
-                    });
-                }
-            });
-        } else {
-            // Pause and unload when out of viewport
-            previewVideo.pause();
-            previewVideo.src = '';
-        }
-    });
-}, observerOptions);
-
-// Observe all cards with videos
-allCards.forEach(card => {
-    if (card.dataset.hasVideo === 'true') {
-        videoObserver.observe(card);
-    }
-});
+}
 
 // Show video in Bootstrap modal (desktop)
 async function showVideoModal(card, videoData) {
@@ -501,37 +304,26 @@ async function showVideoModal(card, videoData) {
     const modalEl = document.getElementById('videoModal');
     const modal = new bootstrap.Modal(modalEl);
     const container = document.getElementById('modalVideoContainer');
-    const title = document.getElementById('videoModalTitle');
-    const postData = document.getElementById('modalPostData');
     const prevBtn = document.getElementById('prevPostBtn');
     const nextBtn = document.getElementById('nextPostBtn');
-    
-    title.textContent = card.dataset.channel;
-    
-    // Update navigation buttons
+
+    document.getElementById('videoModalTitle').textContent = card.dataset.channel;
     prevBtn.disabled = currentModalIndex === 0;
     nextBtn.disabled = currentModalIndex === allCards.length - 1;
-    
-    // Display post data
-    const postText = card.dataset.text || 'No description';
-    const postLink = card.dataset.link;
-    const views = card.dataset.views || '0';
+
     const datetime = card.querySelector('.post-datetime')?.dataset.datetime;
-    
-    postData.innerHTML = `
+    document.getElementById('modalPostData').innerHTML = `
         <div class="mb-2"><strong>Channel:</strong> ${card.dataset.channel}</div>
-        <div class="mb-2"><strong>Views:</strong> 👁 ${views}</div>
+        <div class="mb-2"><strong>Views:</strong> 👁 ${card.dataset.views || '0'}</div>
         <div class="mb-2"><strong>Date:</strong> ${datetime ? formatDateTimeFull(datetime) : 'Unknown'}</div>
-        <div class="mb-3"><strong>Description:</strong><br>${postText}</div>
-        <a href="${postLink}" target="_blank" class="btn btn-primary">
+        <div class="mb-3"><strong>Description:</strong><br>${card.dataset.text || 'No description'}</div>
+        <a href="${card.dataset.link}" target="_blank" class="btn btn-primary">
             <i class="bi bi-telegram"></i> Open in Telegram
         </a>
     `;
-    
+
     container.innerHTML = '';
-    
     if (videoData.video) {
-        // Video available - autoplay unmuted
         const video = document.createElement('video');
         video.src = videoData.video;
         video.controls = true;
@@ -539,68 +331,48 @@ async function showVideoModal(card, videoData) {
         video.style.width = '100%';
         video.style.maxHeight = '70vh';
         video.style.backgroundColor = '#000';
-        
-        if (videoData.thumbnail) {
-            video.poster = videoData.thumbnail;
-        }
-        
+        if (videoData.thumbnail) video.poster = videoData.thumbnail;
         container.appendChild(video);
-        
-        // Clean up when modal closes
-        modalEl.addEventListener('hidden.bs.modal', () => {
-            video.pause();
-            video.src = '';
-        }, { once: true });
+        modalEl.addEventListener('hidden.bs.modal', () => { video.pause(); video.src = ''; }, { once: true });
     } else {
-        // Video extraction failed - use Telegram embed iframe
-        const embedUrl = `https://t.me/${card.dataset.channel}/${card.dataset.post}?embed=1&mode=tme`;
-        container.innerHTML = `
-            <iframe 
-                src="${embedUrl}" 
-                width="100%" 
-                height="500px" 
-                frameborder="0" 
-                scrolling="no"
-                style="background: #000; border-radius: 8px;">
-            </iframe>
-        `;
+        container.innerHTML = `<iframe src="https://t.me/${card.dataset.channel}/${card.dataset.post}?embed=1&mode=tme"
+            width="100%" height="500px" frameborder="0" scrolling="no" style="background:#000;border-radius:8px;"></iframe>`;
     }
-    
     modal.show();
 }
 
-// Navigate to next/previous post
 async function navigatePost(direction) {
     const newIndex = currentModalIndex + direction;
     if (newIndex < 0 || newIndex >= allCards.length) return;
-    
     currentModalIndex = newIndex;
     const newCard = allCards[currentModalIndex];
-    const channel = newCard.dataset.channel;
-    const postId = newCard.dataset.post;
-    
-    const videoData = await getVideoUrl(channel, postId);
-    showVideoModal(newCard, videoData);
+    const idx = parseInt(newCard.dataset.albumIndex || '0');
+    const rawData = await getVideoUrl(newCard.dataset.channel, newCard.dataset.post);
+    const videoUrl = (rawData.videos && rawData.videos[idx]) ? rawData.videos[idx] : rawData.video;
+    showVideoModal(newCard, { ...rawData, video: videoUrl, videos: [videoUrl] });
 }
 
-// Navigation button handlers
 document.getElementById('prevPostBtn').addEventListener('click', () => navigatePost(-1));
 document.getElementById('nextPostBtn').addEventListener('click', () => navigatePost(1));
 
-// Keyboard navigation (arrow keys)
 document.addEventListener('keydown', (e) => {
-    const modalEl = document.getElementById('videoModal');
-    const isModalOpen = modalEl.classList.contains('show');
-    
-    if (!isModalOpen) return;
-    
-    if (e.key === 'ArrowLeft') {
-        e.preventDefault();
-        navigatePost(-1);
-    } else if (e.key === 'ArrowRight') {
-        e.preventDefault();
-        navigatePost(1);
+    if (!document.getElementById('videoModal').classList.contains('show')) return;
+    if (e.key === 'ArrowLeft') { e.preventDefault(); navigatePost(-1); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); navigatePost(1); }
+});
+
+// ====== HTMX lifecycle hooks ======
+document.body.addEventListener('htmx:beforeRequest', showLoadingBar);
+document.body.addEventListener('htmx:afterSwap', (e) => {
+    if (e.detail.target.id === 'grid-container') {
+        hideLoadingBar();
+        initCards();
+        renderFilterChips();
     }
 });
+
+// Initial render
+initCards();
+renderFilterChips();
 </script>
 {% endblock %}

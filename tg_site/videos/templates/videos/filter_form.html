@@ -17,6 +17,33 @@
                 <i class="bi bi-x-lg"></i>
             </button>
         </div>
+        
+        <!-- Search Type Options -->
+        <div class="mt-2">
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" 
+                       type="checkbox" 
+                       name="search_keywords" 
+                       id="searchKeywords"
+                       value="1"
+                       {% if not request.GET.search_semantic or request.GET.search_keywords %}checked{% endif %}>
+                <label class="form-check-label small" for="searchKeywords">
+                    🔤 Keywords
+                </label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" 
+                       type="checkbox" 
+                       name="search_semantic" 
+                       id="searchSemantic"
+                       value="1"
+                       {% if request.GET.search_semantic %}checked{% endif %}>
+                <label class="form-check-label small" for="searchSemantic">
+                    🧠 Semantic
+                </label>
+            </div>
+        </div>
+        
         <small class="text-muted">Press Enter to search</small>
     </div>
     
@@ -47,6 +74,9 @@
                 {% empty %}
                 <div class="text-muted small">No channels yet</div>
                 {% endfor %}
+                <div class="border-top pt-2 mt-1">
+                    <button type="button" class="btn btn-primary btn-sm w-100" id="applyChannelsBtn">Apply</button>
+                </div>
             </div>
         </div>
         <input type="hidden" name="channels" id="channelsInput" value="{{ filters.channels }}">
@@ -145,17 +175,12 @@
 </form>
 
 <script>
-// ====== State Management ======
-var debounceTimer = debounceTimer || null;
-var isSubmitting = isSubmitting || false;
-
 // ====== Helper Functions ======
 function showLoadingBar() {
     const bar = document.getElementById('loadingBar');
     if (bar) {
         bar.style.width = '0%';
         bar.style.display = 'block';
-        // Animate to 90% over 500ms
         setTimeout(() => bar.style.width = '90%', 10);
     }
 }
@@ -164,22 +189,16 @@ function hideLoadingBar() {
     const bar = document.getElementById('loadingBar');
     if (bar) {
         bar.style.width = '100%';
-        setTimeout(() => {
-            bar.style.display = 'none';
-        }, 200);
+        setTimeout(() => { bar.style.display = 'none'; }, 200);
     }
 }
 
-function submitForm() {
-    if (isSubmitting) return;
-    isSubmitting = true;
-    showLoadingBar();
-    document.getElementById('filterForm').submit();
-}
-
-function debouncedSubmit(delay = 300) {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(submitForm, delay);
+function htmxRefresh() {
+    const form = document.getElementById('filterForm');
+    const params = new URLSearchParams(new FormData(form));
+    const url = '/?' + params.toString();
+    history.pushState(null, '', url);
+    htmx.ajax('GET', url, { target: '#grid-container', swap: 'innerHTML' });
 }
 
 function hasActiveFilters() {
@@ -234,7 +253,7 @@ if (typeof clearSearchBtn === 'undefined') {
 searchInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
         e.preventDefault();
-        submitForm();
+        htmxRefresh();
     }
 });
 
@@ -245,7 +264,18 @@ searchInput.addEventListener('input', () => {
 clearSearchBtn.addEventListener('click', () => {
     searchInput.value = '';
     clearSearchBtn.style.display = 'none';
-    submitForm();
+    htmxRefresh();
+});
+
+// ====== Search Type Checkboxes ======
+document.getElementById('searchKeywords').addEventListener('change', () => {
+    updateClearAllButton();
+    if (searchInput.value.trim()) htmxRefresh();
+});
+
+document.getElementById('searchSemantic').addEventListener('change', () => {
+    updateClearAllButton();
+    if (searchInput.value.trim()) htmxRefresh();
 });
 
 // ====== Channel Multi-Select ======
@@ -283,40 +313,36 @@ document.querySelectorAll('.channel-checkbox').forEach(checkbox => {
         const value = e.target.value;
         const checked = e.target.checked;
         document.querySelectorAll(`.channel-checkbox[value="${value}"]`).forEach(cb => {
-            if (cb !== e.target) {
-                cb.checked = checked;
-            }
+            if (cb !== e.target) cb.checked = checked;
         });
-        
         updateChannelsInput();
-        debouncedSubmit();
         updateClearAllButton();
     });
+});
+
+document.getElementById('applyChannelsBtn').addEventListener('click', () => {
+    htmxRefresh();
 });
 
 // ====== Media Type Radio Buttons ======
 document.querySelectorAll('.media-radio').forEach(radio => {
     radio.addEventListener('change', () => {
-        submitForm();
         updateClearAllButton();
+        htmxRefresh();
     });
 });
 
 // ====== Date Range ======
-document.getElementById('dateFrom').addEventListener('change', () => {
-    submitForm();
-    updateClearAllButton();
-});
-
-document.getElementById('dateTo').addEventListener('change', () => {
-    submitForm();
-    updateClearAllButton();
+['dateFrom', 'dateTo'].forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('blur', () => { updateClearAllButton(); htmxRefresh(); });
+    el.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); updateClearAllButton(); htmxRefresh(); } });
 });
 
 // ====== Sort By ======
 document.getElementById('sortSelect').addEventListener('change', () => {
-    submitForm();
     updateClearAllButton();
+    htmxRefresh();
 });
 
 // ====== Add Channel ======
@@ -369,8 +395,5 @@ updateChannelDropdownLabel();
 updateClearAllButton();
 loadFiltersFromStorage();
 
-// Hide loading bar on page load
-window.addEventListener('load', () => {
-    hideLoadingBar();
-});
+window.addEventListener('load', hideLoadingBar);
 </script>

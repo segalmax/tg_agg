@@ -11,50 +11,75 @@ import os
 
 
 def home(request):
-    posts = Post.objects.select_related('channel').all()
+    from django.db.models import Q
     
-    # Filters
+    # Build filter conditions first
     search_query = request.GET.get('q', '').strip()
-    if search_query:
-        posts = posts.filter(text__icontains=search_query)
+    search_keywords = request.GET.get('search_keywords') == '1'
+    search_semantic = request.GET.get('search_semantic') == '1'
     
-    # Multi-channel filter (comma-separated)
+    # Default to keywords if nothing is selected
+    if not search_keywords and not search_semantic:
+        search_keywords = True
+    
+    # Build additional filters
+    additional_filters = Q()
+    
+    # Multi-channel filter
     channel_filter = request.GET.get('channels', '').strip()
     if channel_filter:
         channel_list = [c.strip() for c in channel_filter.split(',') if c.strip()]
         if channel_list:
-            posts = posts.filter(channel__username__in=channel_list)
+            additional_filters &= Q(channel__username__in=channel_list)
     
-    # Media filter - now defaults to 'video' for backwards compatibility
+    # Media filter
     media_filter = request.GET.get('media', 'video').strip()
-    
     if media_filter == 'video':
-        posts = posts.filter(video_data__isnull=False)
+        additional_filters &= Q(video_data__isnull=False)
     elif media_filter == 'photo':
-        posts = posts.filter(media_type='MessageMediaPhoto')
+        additional_filters &= Q(media_type='MessageMediaPhoto')
     elif media_filter == 'has_media':
-        posts = posts.filter(has_media=True)
-    # 'all' = no filtering, show everything
+        additional_filters &= Q(has_media=True)
     
-    min_views = request.GET.get('min_views', '').strip()
-    if min_views:
-        try:
-            posts = posts.filter(views__gte=int(min_views))
-        except ValueError:
-            pass
-    
+    # Date range filters (inclusive on both ends)
     date_from = request.GET.get('date_from', '').strip()
     if date_from:
-        posts = posts.filter(date__gte=date_from)
-    
+        additional_filters &= Q(date__date__gte=date_from)
+
     date_to = request.GET.get('date_to', '').strip()
     if date_to:
-        posts = posts.filter(date__lte=date_to)
+        additional_filters &= Q(date__date__lte=date_to)
     
-    # Sorting
-    sort_by = request.GET.get('sort', '-date')
-    if sort_by in ['date', '-date', 'views', '-views', 'forwards', '-forwards', 'replies', '-replies']:
-        posts = posts.order_by(sort_by)
+    # Now apply search with all filters
+    if search_query:
+        if search_keywords and search_semantic:
+            # Hybrid search: both semantic and keyword
+            posts = Post.hybrid_search(
+                query_text=search_query,
+                keyword_filters=Q(text__icontains=search_query) & additional_filters,
+                limit=1000
+            )
+        elif search_semantic:
+            # Semantic search only
+            posts = Post.semantic_search(
+                query_text=search_query,
+                filters=additional_filters,
+                limit=1000
+            )
+        else:
+            # Keywords search only (default)
+            posts = Post.objects.select_related('channel').filter(
+                Q(text__icontains=search_query) & additional_filters
+            )
+    else:
+        # No search query - apply filters to all posts
+        posts = Post.objects.select_related('channel').filter(additional_filters)
+    
+    # Sorting (skip for semantic/hybrid as they're already sorted by relevance)
+    if not search_semantic:
+        sort_by = request.GET.get('sort', '-date')
+        if sort_by in ['date', '-date', 'views', '-views', 'forwards', '-forwards', 'replies', '-replies']:
+            posts = posts.order_by(sort_by)
     
     # Get all channels for filter dropdown
     channels = Channel.objects.all().order_by('username')
@@ -72,7 +97,8 @@ def home(request):
     # Count total posts matching filters
     total_count = posts.count()
     
-    return render(request, 'videos/post_list.html', {
+    template = 'videos/grid_partial.html' if request.headers.get('HX-Request') else 'videos/post_list.html'
+    return render(request, template, {
         'page_obj': page_obj,
         'search_query': search_query or '',
         'channels': channels,
@@ -83,7 +109,7 @@ def home(request):
             'media': media_filter or 'video',
             'date_from': date_from or '',
             'date_to': date_to or '',
-            'sort': sort_by or '-date',
+            'sort': request.GET.get('sort', '-date'),
         }
     })
 
@@ -131,11 +157,11 @@ def post_detail(request, username, post_id):
     
     date_from = request.GET.get('date_from', '').strip()
     if date_from:
-        posts = posts.filter(date__gte=date_from)
-    
+        posts = posts.filter(date__date__gte=date_from)
+
     date_to = request.GET.get('date_to', '').strip()
     if date_to:
-        posts = posts.filter(date__lte=date_to)
+        posts = posts.filter(date__date__lte=date_to)
     
     sort_by = request.GET.get('sort', '-date')
     if sort_by in ['date', '-date', 'views', '-views', 'forwards', '-forwards', 'replies', '-replies']:
@@ -169,117 +195,66 @@ def post_detail(request, username, post_id):
     })
 
 
+TELEGRAM_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.5',
+    'Accept-Encoding': 'identity',
+    'Referer': 'https://t.me/',
+    'DNT': '1',
+    'Connection': 'close',
+}
+
+THUMB_PATTERNS = [
+    r"background-image:url\('([^']+)'\)",
+    r'poster["\']?\s*[:=]\s*["\']([^"\']+)["\']',
+    r'thumb["\']?\s*[:=]\s*["\']([^"\']+)["\']',
+]
+
+
+def fetch_embed_html(channel, msg_id):
+    req = urllib.request.Request(f"https://t.me/{channel}/{msg_id}?embed=1", headers=TELEGRAM_HEADERS)
+    with urllib.request.urlopen(req, timeout=10) as response:
+        return response.read().decode('utf-8')
+
+
+def extract_first_mp4(html):
+    for raw_url in re.findall(r'(https?://[^\s"\'<>]+\.mp4(?:\?[^\s"\'<>]*)?)', html, re.IGNORECASE):
+        return raw_url.replace('\\/', '/')
+    return None
+
+
+def extract_thumbnail(html):
+    for pattern in THUMB_PATTERNS:
+        match = re.search(pattern, html)
+        if match:
+            url = match.group(1)
+            return ('https:' + url) if url.startswith('//') else url
+    return None
+
+
 def get_video_url(request, channel, post_id):
-    """Fetch video URL from Telegram embed page"""
-    try:
-        embed_url = f"https://t.me/{channel}/{post_id}?embed=1"
-        # Use urllib instead of requests to avoid connection pooling issues
-        req = urllib.request.Request(
-            embed_url,
-            headers={
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                'Accept-Language': 'en-US,en;q=0.5',
-                'Accept-Encoding': 'identity',  # Force uncompressed
-                'Referer': 'https://t.me/',
-                'DNT': '1',
-                'Connection': 'close',  # Force connection close
-                'Upgrade-Insecure-Requests': '1',
-            }
-        )
-        
-        with urllib.request.urlopen(req, timeout=10) as response:
-            resp_text = response.read().decode('utf-8')
-            resp_status = response.status
-            resp_headers = dict(response.headers)
-        
-        # Debug logging for gazaalannet
-        if channel == 'gazaalannet' and post_id == 72657:
-            print(f"\n=== WEB SERVICE DEBUG ===")
-            print(f"Response length: {len(resp_text)}")
-            print(f"Response headers: {resp_headers}")
-            print(f"Has video tag: {'<video' in resp_text}")
-            print(f"First 300 chars: {resp_text[:300]}")
-            print("=" * 50)
-        
-        class FakeResp:
-            def __init__(self, text, status):
-                self.text = text
-                self.status_code = status
-        
-        resp = FakeResp(resp_text, resp_status)
-        
-        # Extract thumbnail
-        thumb_patterns = [
-            r"background-image:url\('([^']+)'\)",
-            r'poster["\']?\s*[:=]\s*["\']([^"\']+)["\']',
-            r'thumb["\']?\s*[:=]\s*["\']([^"\']+)["\']',
-        ]
-        thumbnail = None
-        for pattern in thumb_patterns:
-            match = re.search(pattern, resp.text)
-            if match:
-                thumbnail = match.group(1)
-                if thumbnail.startswith('//'):
-                    thumbnail = 'https:' + thumbnail
-                break
-        
-        # Extract video source - comprehensive patterns
-        video_url = None
-        
-        patterns = [
-            # Most specific first - direct video tag with src
-            r'<video\s+[^>]*?src="([^"]+\.mp4[^"]*)"',
-            r"<video\s+[^>]*?src='([^']+\.mp4[^']*)'",
-            
-            # JSON-style properties
-            r'"file"\s*:\s*"([^"]+\.mp4[^"]*)"',
-            r'"video"\s*:\s*"([^"]+\.mp4[^"]*)"',
-            r'"url"\s*:\s*"([^"]+\.mp4[^"]*)"',
-            r'"src"\s*:\s*"([^"]+\.mp4[^"]*)"',
-            
-            # HTML attributes (less specific)
-            r'<source[^>]+src\s*=\s*["\']([^"\']+\.mp4[^"\']*)["\']',
-            r'src\s*=\s*["\']([^"\']+\.mp4[^"\']*)["\']',
-            
-            # JavaScript variable assignments
-            r'videoSrc\s*=\s*["\']([^"\']+\.mp4[^"\']*)["\']',
-            r'video_src\s*=\s*["\']([^"\']+\.mp4[^"\']*)["\']',
-            
-            # Direct URL patterns (broad, last resort)
-            r'(https?://[^\s"\'<>]+video[^\s"\'<>]*\.mp4[^\s"\'<>]*)',
-            r'(//[^\s"\'<>]+telegram[^\s"\'<>]*\.mp4[^\s"\'<>]*)',
-            r'(https?://[^\s"\'<>]+\.mp4(?:\?[^\s"\'<>]*)?)',
-        ]
-        
-        for i, pattern in enumerate(patterns):
-            match = re.search(pattern, resp.text, re.IGNORECASE)
-            if match:
-                video_url = match.group(1)
-                # Fix protocol-relative URLs
-                if video_url.startswith('//'):
-                    video_url = 'https:' + video_url
-                # Unescape if needed
-                video_url = video_url.replace('\\/', '/')
-                print(f"Video fetch OK for {channel}/{post_id} (pattern #{i+1}): {video_url[:80]}")
-                break
-        
-        if not video_url:
-            # Debug: check if 'cdn' or 'telesco.pe' exist in response
-            has_cdn = 'cdn' in resp.text.lower()
-            has_telesco = 'telesco.pe' in resp.text
-            has_mp4 = '.mp4' in resp.text
-            print(f"Video fetch FAILED for {channel}/{post_id} - no video found (cdn={has_cdn}, telesco={has_telesco}, mp4={has_mp4}, len={len(resp.text)})")
-        
-        return JsonResponse({
-            'thumbnail': thumbnail,
-            'video': video_url
-        })
-    except Exception as e:
-        print(f"Error fetching video {channel}/{post_id}: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return JsonResponse({'error': 'Failed to fetch video'}, status=500)
+    """Fetch video URL(s) from Telegram embed page. For albums, fetches each album_id separately."""
+    post = get_object_or_404(Post, channel__username=channel, telegram_id=post_id)
+    album_ids = (post.video_data or {}).get('album_ids')
+
+    primary_html = fetch_embed_html(channel, post_id)
+    thumbnail = extract_thumbnail(primary_html)
+
+    if album_ids:
+        videos = []
+        for aid in album_ids:
+            html = fetch_embed_html(channel, aid) if aid != post_id else primary_html
+            videos.append(extract_first_mp4(html))
+        print(f"Album fetch for {channel}/{post_id}: {len(videos)} video(s) from {len(album_ids)} album_ids")
+        return JsonResponse({'thumbnail': thumbnail, 'video': videos[0], 'videos': videos})
+
+    url = extract_first_mp4(primary_html)
+    if url:
+        print(f"Video fetch OK for {channel}/{post_id}: {url[:80]}")
+    else:
+        print(f"Video fetch FAILED for {channel}/{post_id} (len={len(primary_html)})")
+    return JsonResponse({'thumbnail': thumbnail, 'video': url, 'videos': [url] if url else []})
 
 
 @require_http_methods(["POST"])

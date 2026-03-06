@@ -244,12 +244,16 @@ def get_video_url(request, channel, post_id):
     """Fetch video URL(s) from Telegram embed page.
     The primary embed page already contains all album videos in order — extract all unique filenames.
     """
-    html = fetch_embed_html(channel, post_id)
-    thumbnail = extract_thumbnail(html)
-    videos = extract_all_mp4s(html)
-    video_url = videos[0] if videos else None
-    print(f"Video fetch for {channel}/{post_id}: {len(videos)} video(s)")
-    return JsonResponse({'thumbnail': thumbnail, 'video': video_url, 'videos': videos})
+    try:
+        html = fetch_embed_html(channel, post_id)
+        thumbnail = extract_thumbnail(html)
+        videos = extract_all_mp4s(html)
+        video_url = videos[0] if videos else None
+        print(f"Video fetch for {channel}/{post_id}: {len(videos)} video(s)")
+        return JsonResponse({'thumbnail': thumbnail, 'video': video_url, 'videos': videos})
+    except Exception as e:
+        print(f"Error fetching video {channel}/{post_id}: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
 
 
 @require_http_methods(["POST"])

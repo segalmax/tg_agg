@@ -43,12 +43,14 @@ def build_media_data(msg: Message, album_msgs: list | None = None) -> dict | Non
     if is_album:
         album_items = []
         video_index = 0
+        photo_index = 0
         for m in album_msgs:
             if hasattr(m.media, "document") and m.media.document:
                 album_items.append({"id": m.id, "type": "video", "video_index": video_index})
                 video_index += 1
             else:
-                album_items.append({"id": m.id, "type": "photo"})
+                album_items.append({"id": m.id, "type": "photo", "photo_index": photo_index})
+                photo_index += 1
         data["album_ids"] = [m.id for m in album_msgs]  # keep for backward compat
         data["album_items"] = album_items
     return data

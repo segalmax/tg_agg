@@ -252,13 +252,14 @@ function initCards() {
         } else if (mediaType === 'photo') {
             const imgEl = card.querySelector('.media-thumbnail');
             let mediaData = null;
+            const pickPhotoUrl = (data) => (data.photos && data.photos[albumIndex]) ? data.photos[albumIndex] : data.photo;
 
             const photoObserver = new IntersectionObserver((entries) => {
                 if (!entries[0].isIntersecting) return;
                 photoObserver.disconnect();
                 getVideoUrl(channel, postId, 'photo').then(data => {
                     mediaData = data;
-                    if (data.photo && imgEl) imgEl.src = data.photo;
+                    if (imgEl) imgEl.src = pickPhotoUrl(data) || '';
                 });
             }, { rootMargin: '200px', threshold: 0.01 });
             if (imgEl) photoObserver.observe(card);
@@ -267,7 +268,7 @@ function initCards() {
                 e.stopPropagation();
                 if (!mediaData) mediaData = await getVideoUrl(channel, postId, 'photo');
                 currentModalIndex = index;
-                showPhotoModal(card, mediaData);
+                showPhotoModal(card, { ...mediaData, photo: pickPhotoUrl(mediaData) });
             });
         }
     });

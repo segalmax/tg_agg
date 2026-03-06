@@ -16,12 +16,12 @@
         <div class="col">
             <div class="card video-card h-100"
                  data-channel="{{ post.channel.username }}"
-                 data-post="{% if item.type == 'video' %}{{ post.telegram_id }}{% else %}{{ item.id }}{% endif %}"
+                 data-post="{{ post.telegram_id }}"
                  data-link="{{ post.link }}"
                  data-text="{{ post.text|escape }}"
                  data-views="{{ post.views|default:'0' }}"
                  data-media-type="{{ item.type }}"
-                 data-album-index="{% if item.type == 'video' %}{{ item.video_index }}{% else %}0{% endif %}"
+                 data-album-index="{% if item.type == 'video' %}{{ item.video_index }}{% else %}{{ item.photo_index }}{% endif %}"
                  data-album-size="{{ post.video_data.album_items|length }}">
                 <div class="position-relative">
                     {% if item.type == 'video' %}
@@ -47,17 +47,17 @@
         {% endfor %}
 
     {% elif post.video_data.album_ids %}
-        {% comment %}Album - old format (all same media type as primary){% endcomment %}
+        {% comment %}Album - old format (use primary ID + counter for indexing){% endcomment %}
         {% for album_id in post.video_data.album_ids %}
         <div class="col">
             <div class="card video-card h-100"
                  data-channel="{{ post.channel.username }}"
-                 data-post="{% if post.media_type == 'MessageMediaDocument' %}{{ post.telegram_id }}{% else %}{{ album_id }}{% endif %}"
+                 data-post="{{ post.telegram_id }}"
                  data-link="{{ post.link }}"
                  data-text="{{ post.text|escape }}"
                  data-views="{{ post.views|default:'0' }}"
                  data-media-type="{% if post.media_type == 'MessageMediaDocument' %}video{% else %}photo{% endif %}"
-                 data-album-index="{% if post.media_type == 'MessageMediaDocument' %}{{ forloop.counter0 }}{% else %}0{% endif %}"
+                 data-album-index="{{ forloop.counter0 }}"
                  data-album-size="{{ post.video_data.album_ids|length }}">
                 <div class="position-relative">
                     {% if post.media_type == 'MessageMediaDocument' %}

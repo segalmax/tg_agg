@@ -26,7 +26,7 @@ from telethon.sessions import StringSession
 from telethon.tl.types import Message
 
 # Configuration
-DAYS_BACK = 7  # Always fetch last 7 days
+DAYS_BACK = int(os.getenv('DAYS_BACK', '7'))
 CHECK_INTERVAL = 60  # seconds
 RATE_LIMIT_DELAY = 2  # seconds between channels
 

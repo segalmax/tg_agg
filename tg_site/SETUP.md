@@ -29,7 +29,7 @@ exit;
 
 ```bash
 cd /Users/segalmax/tg_agg/tg_site
-source ../venv/bin/activate
+source ../.venv/bin/activate
 export $(cat .env | xargs)
 python manage.py makemigrations
 python manage.py migrate

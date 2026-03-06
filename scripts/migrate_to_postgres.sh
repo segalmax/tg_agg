@@ -17,7 +17,7 @@ if [[ ! $REPLY =~ ^[Yy]$ ]]; then
 fi
 
 cd "$(dirname "$0")/tg_site"
-source ../venv/bin/activate
+source ../.venv/bin/activate
 
 echo ""
 echo "Step 1: Backup MySQL data..."

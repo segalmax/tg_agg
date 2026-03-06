@@ -30,7 +30,7 @@ To run locally with production data, get Railway credentials:
    - `SECRET_KEY`, `DEBUG=True`
    - `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST` (use `mainline.proxy.rlwy.net`), `DB_PORT`
    - `API_ID`, `API_HASH`, `SESSION_STRING` (for Telegram fetcher only)
-4. **Start server**: `cd tg_site && source ../venv/bin/activate && python manage.py runserver`
+4. **Start server**: `cd tg_site && source ../.venv/bin/activate && python manage.py runserver`
 5. **Test connection**: `curl -I http://localhost:8000/` should return `200 OK`
 6. **Debug UI**: Use Chrome DevTools MCP to investigate JS issues, check console for errors
 7. **Common issues**: Missing env vars cause `KeyError`, wrong DB host causes connection refused

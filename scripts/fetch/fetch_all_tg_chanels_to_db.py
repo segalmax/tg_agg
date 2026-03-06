@@ -31,17 +31,26 @@ CHECK_INTERVAL = 60  # seconds
 RATE_LIMIT_DELAY = 2  # seconds between channels
 
 
-def build_media_data(msg: Message, album_ids: list[int] | None = None) -> dict | None:
-    is_album = album_ids and len(album_ids) > 1
+def build_media_data(msg: Message, album_msgs: list | None = None) -> dict | None:
+    is_album = album_msgs and len(album_msgs) > 1
     if hasattr(msg.media, "document") and msg.media.document:
         doc = msg.media.document
         data = {"duration": getattr(doc, "duration", None), "size": getattr(doc, "size", None)}
     elif type(msg.media).__name__ == "MessageMediaPhoto" and is_album:
-        data = {}  # photo album — only needs album_ids, no extra fields
+        data = {}
     else:
         return None
     if is_album:
-        data["album_ids"] = album_ids
+        album_items = []
+        video_index = 0
+        for m in album_msgs:
+            if hasattr(m.media, "document") and m.media.document:
+                album_items.append({"id": m.id, "type": "video", "video_index": video_index})
+                video_index += 1
+            else:
+                album_items.append({"id": m.id, "type": "photo"})
+        data["album_ids"] = [m.id for m in album_msgs]  # keep for backward compat
+        data["album_items"] = album_items
     return data
 
 
@@ -71,21 +80,19 @@ def save_message(msg: Message, channel: Channel) -> tuple[bool, bool]:
     msg_views = getattr(msg, "views", 0) or 0
     if msg_views == 1:
         return False, False
-    return upsert_post(msg, channel, build_media_data(msg))
+    return upsert_post(msg, channel, build_media_data(msg, None))
 
 
 def save_album(primary_msg: Message, album_msgs: list[Message], channel: Channel) -> tuple[bool, bool]:
     primary_views = getattr(primary_msg, "views", 0) or 0
     if primary_views == 1:
         return False, False
-    album_ids = [m.id for m in album_msgs]
-    video_data = build_media_data(primary_msg, album_ids)
+    video_data = build_media_data(primary_msg, album_msgs)
     # Use highest view count from any album message
     max_views = max((getattr(m, "views", 0) or 0) for m in album_msgs)
     primary_msg.views = max_views
     result = upsert_post(primary_msg, channel, video_data)
-    # Remove any previously-saved secondary album posts
-    secondary_ids = album_ids[1:]
+    secondary_ids = [m.id for m in album_msgs[1:]]
     deleted, _ = Post.objects.filter(channel=channel, telegram_id__in=secondary_ids).delete()
     if deleted:
         print(f"  🗑️  Removed {deleted} secondary album posts for album starting at {primary_msg.id}")

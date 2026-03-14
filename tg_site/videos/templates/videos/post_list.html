@@ -388,12 +388,15 @@ async function navigatePost(direction) {
     currentModalIndex = newIndex;
     const newCard = allCards[currentModalIndex];
     const mt = newCard.dataset.mediaType;
-    const rawData = await getVideoUrl(newCard.dataset.channel, newCard.dataset.post, mt);
+    const messageId = newCard.dataset.messageId || null;
+    const rawData = await getVideoUrl(newCard.dataset.channel, newCard.dataset.post, mt, messageId);
     if (mt === 'photo') {
-        showPhotoModal(newCard, rawData);
+        const idx = parseInt(newCard.dataset.albumIndex || '0');
+        const photoUrl = rawData.photo || (rawData.photos && rawData.photos[idx]);
+        showPhotoModal(newCard, { ...rawData, photo: photoUrl });
     } else {
         const idx = parseInt(newCard.dataset.albumIndex || '0');
-        const videoUrl = (rawData.videos && rawData.videos[idx]) ? rawData.videos[idx] : rawData.video;
+        const videoUrl = rawData.video || (rawData.videos && rawData.videos[idx]);
         showVideoModal(newCard, { ...rawData, video: videoUrl, videos: [videoUrl] });
     }
 }

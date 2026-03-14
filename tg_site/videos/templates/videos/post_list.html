@@ -198,10 +198,13 @@ function formatDateTimeFull(isoString) {
     return `${day}/${month}/${year} ${hours}:${minutes}`;
 }
 
-async function getVideoUrl(channel, postId, mediaType) {
-    const cacheKey = `${channel}/${postId}/${mediaType || 'auto'}`;
+async function getVideoUrl(channel, postId, mediaType, messageId) {
+    const cacheKey = messageId ? `${channel}/${messageId}/${mediaType || 'auto'}` : `${channel}/${postId}/${mediaType || 'auto'}`;
     if (videoCache[cacheKey]) return videoCache[cacheKey];
-    const qs = mediaType === 'photo' ? '?media_type=photo' : '';
+    const params = new URLSearchParams();
+    if (mediaType === 'photo') params.set('media_type', 'photo');
+    if (messageId) params.set('message_id', messageId);
+    const qs = params.toString() ? '?' + params.toString() : '';
     const response = await fetch(`/api/video/${channel}/${postId}/${qs}`);
     const data = await response.json();
     videoCache[cacheKey] = data;
@@ -221,16 +224,18 @@ function initCards() {
     allCards.forEach((card, index) => {
         const channel = card.dataset.channel;
         const postId = card.dataset.post;
-        const mediaType = card.dataset.mediaType;  // 'video' | 'photo'
+        const messageId = card.dataset.messageId || null;
+        const mediaType = card.dataset.mediaType;
         const albumIndex = parseInt(card.dataset.albumIndex || '0');
+
+        const pickVideoUrl = (data) => data.video || (data.videos && data.videos[albumIndex]);
+        const pickPhotoUrl = (data) => data.photo || (data.photos && data.photos[albumIndex]);
 
         if (mediaType === 'video') {
             const thumbnail = card.querySelector('.video-thumbnail');
             const previewVideo = card.querySelector('.preview-video');
             let mediaData = null;
-            const pickVideoUrl = (data) => (data.videos && data.videos[albumIndex]) ? data.videos[albumIndex] : data.video;
-
-            getVideoUrl(channel, postId, 'video').then(data => {
+            getVideoUrl(channel, postId, 'video', messageId).then(data => {
                 mediaData = data;
                 if (data.thumbnail && thumbnail) thumbnail.poster = data.thumbnail;
             });
@@ -243,7 +248,7 @@ function initCards() {
 
             card.addEventListener('click', async (e) => {
                 e.stopPropagation();
-                if (!mediaData) mediaData = await getVideoUrl(channel, postId, 'video');
+                if (!mediaData) mediaData = await getVideoUrl(channel, postId, 'video', messageId);
                 const videoUrl = pickVideoUrl(mediaData);
                 currentModalIndex = index;
                 showVideoModal(card, { ...mediaData, video: videoUrl, videos: [videoUrl] });
@@ -252,12 +257,10 @@ function initCards() {
         } else if (mediaType === 'photo') {
             const imgEl = card.querySelector('.media-thumbnail');
             let mediaData = null;
-            const pickPhotoUrl = (data) => (data.photos && data.photos[albumIndex]) ? data.photos[albumIndex] : data.photo;
-
             const photoObserver = new IntersectionObserver((entries) => {
                 if (!entries[0].isIntersecting) return;
                 photoObserver.disconnect();
-                getVideoUrl(channel, postId, 'photo').then(data => {
+                getVideoUrl(channel, postId, 'photo', messageId).then(data => {
                     mediaData = data;
                     if (imgEl) imgEl.src = pickPhotoUrl(data) || '';
                 });
@@ -266,7 +269,7 @@ function initCards() {
 
             card.addEventListener('click', async (e) => {
                 e.stopPropagation();
-                if (!mediaData) mediaData = await getVideoUrl(channel, postId, 'photo');
+                if (!mediaData) mediaData = await getVideoUrl(channel, postId, 'photo', messageId);
                 currentModalIndex = index;
                 showPhotoModal(card, { ...mediaData, photo: pickPhotoUrl(mediaData) });
             });
@@ -280,9 +283,10 @@ function initCards() {
             const previewVideo = gridVideos.get(card);
             if (!previewVideo) return;
             if (entry.isIntersecting) {
+                const messageId = card.dataset.messageId || null;
                 const idx = parseInt(card.dataset.albumIndex || '0');
-                getVideoUrl(card.dataset.channel, card.dataset.post, 'video').then(data => {
-                    const url = (data.videos && data.videos[idx]) ? data.videos[idx] : data.video;
+                getVideoUrl(card.dataset.channel, card.dataset.post, 'video', messageId).then(data => {
+                    const url = data.video || (data.videos && data.videos[idx]);
                     if (url && entry.isIntersecting) {
                         previewVideo.src = url;
                         previewVideo.muted = true;
@@ -339,7 +343,9 @@ async function showVideoModal(card, videoData) {
         container.appendChild(video);
         modalEl.addEventListener('hidden.bs.modal', () => { video.pause(); video.src = ''; }, { once: true });
     } else {
-        container.innerHTML = `<iframe src="https://t.me/${card.dataset.channel}/${card.dataset.post}?embed=1&mode=tme"
+        const msgId = card.dataset.messageId || card.dataset.post;
+        const singleParam = card.dataset.messageId ? '&single=1' : '';
+        container.innerHTML = `<iframe src="https://t.me/${card.dataset.channel}/${msgId}?embed=1&mode=tme${singleParam}"
             width="100%" height="500px" frameborder="0" scrolling="no" style="background:#000;border-radius:8px;"></iframe>`;
     }
     modal.show();

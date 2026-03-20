@@ -163,6 +163,9 @@
             <option value="-views" {% if filters.sort == '-views' %}selected{% endif %}>Most Views</option>
             <option value="-forwards" {% if filters.sort == '-forwards' %}selected{% endif %}>Most Forwards</option>
             <option value="-replies" {% if filters.sort == '-replies' %}selected{% endif %}>Most Replies</option>
+            <option value="-popular" {% if filters.sort == '-popular' %}selected{% endif %}>Popular (all-time)</option>
+            <option value="-trending" {% if filters.sort == '-trending' %}selected{% endif %}>Trending (now)</option>
+            <option value="-viral" {% if filters.sort == '-viral' %}selected{% endif %}>Viral (most shared)</option>
         </select>
     </div>
     

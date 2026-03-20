@@ -3,11 +3,38 @@ from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
+from django.db.models import ExpressionWrapper, FloatField, F
+from django.db.models.expressions import RawSQL
 from .models import Channel, Post
-import requests
 import urllib.request
 import re
 import os
+
+
+ALLOWED_SORTS = [
+    'date', '-date', 'views', '-views',
+    'forwards', '-forwards', 'replies', '-replies',
+    '-popular', '-trending', '-viral',
+]
+
+
+def apply_sort(posts, sort_by):
+    if sort_by == '-popular':
+        return posts.annotate(popularity=ExpressionWrapper(
+            F('views') + F('forwards') * 30 + F('replies') * 5,
+            output_field=FloatField()
+        )).order_by('-popularity')
+    elif sort_by == '-trending':
+        return posts.annotate(trending_score=RawSQL(
+            "(views + forwards*30 + replies*5)::float / POWER(EXTRACT(EPOCH FROM (NOW() - date))/3600.0 + 2, 1.5)",
+            []
+        )).order_by('-trending_score')
+    elif sort_by == '-viral':
+        return posts.annotate(viral_score=ExpressionWrapper(
+            F('forwards') * 1.0 / (F('views') + 1),
+            output_field=FloatField()
+        )).order_by('-viral_score')
+    return posts.order_by(sort_by)
 
 
 def home(request):
@@ -78,8 +105,8 @@ def home(request):
     # Sorting (skip for semantic/hybrid as they're already sorted by relevance)
     if not search_semantic:
         sort_by = request.GET.get('sort', '-date')
-        if sort_by in ['date', '-date', 'views', '-views', 'forwards', '-forwards', 'replies', '-replies']:
-            posts = posts.order_by(sort_by)
+        if sort_by in ALLOWED_SORTS:
+            posts = apply_sort(posts, sort_by)
     
     # Get all channels for filter dropdown
     channels = Channel.objects.all().order_by('username')
@@ -164,9 +191,9 @@ def post_detail(request, username, post_id):
         posts = posts.filter(date__date__lte=date_to)
     
     sort_by = request.GET.get('sort', '-date')
-    if sort_by in ['date', '-date', 'views', '-views', 'forwards', '-forwards', 'replies', '-replies']:
-        posts = posts.order_by(sort_by)
-    
+    if sort_by in ALLOWED_SORTS:
+        posts = apply_sort(posts, sort_by)
+
     # Find prev/next in filtered list
     posts_list = list(posts.values_list('channel__username', 'telegram_id', flat=False))
     current_idx = None

@@ -7,9 +7,10 @@ import pgvector.django.vector
 
 class Migration(migrations.Migration):
 
-    initial = True
+    initial = False
 
     dependencies = [
+        ('videos', '0000_enable_pgvector_extension'),
     ]
 
     operations = [

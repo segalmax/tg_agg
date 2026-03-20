@@ -74,3 +74,14 @@ To backfill historical data (e.g. after switching DB):
 2. Get crash logs via Railway API or `railway logs --service web`
 3. Common causes: missing env var, DB connection failure, bad migration
 4. After env var changes, redeploy the affected service
+
+### `InconsistentMigrationHistory` (videos.0001 before 0000_enable_pgvector_extension)
+Happens if production already had `videos.0001_initial` applied, then `0000_enable_pgvector_extension` was added as its dependency. The extension already exists on the pgvector service; Django only needs the history row.
+
+From repo root, using the **public** DB URL (resolves from your laptop):
+
+```bash
+railway run --service pgvector -- bash -lc 'psql "$DATABASE_PUBLIC_URL" -v ON_ERROR_STOP=1 -c "INSERT INTO django_migrations (app, name, applied) SELECT '\''videos'\'', '\''0000_enable_pgvector_extension'\'', NOW() WHERE NOT EXISTS (SELECT 1 FROM django_migrations WHERE app = '\''videos'\'' AND name = '\''0000_enable_pgvector_extension'\'');"'
+```
+
+Then `railway redeploy --service web`.

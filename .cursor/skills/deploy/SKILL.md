@@ -74,11 +74,11 @@ git checkout main && git pull
 ## Step 5 — Railway redeploy
 
 ```bash
-railway redeploy --service web
-railway redeploy --service telegram-monitor
+railway redeploy --service web --yes
+railway redeploy --service telegram-monitor --yes
 ```
 
-Poll `railway logs --service web` every 15 seconds until you see `Booting worker` (success) or an exception traceback (failure). Max wait: 3 minutes.
+`railway logs` streaming is unreliable — skip it. Wait 30 seconds, then go straight to the browser smoke test.
 
 ## Step 6 — Browser smoke test
 

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "django",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd /Users/segalmax/tg_agg/tg_site && /Users/segalmax/tg_agg/.venv/bin/python -c \"import dotenv, os, subprocess, sys; dotenv.load_dotenv('.env'); subprocess.run([sys.executable, 'manage.py', 'runserver', '8001'])\""],
+      "port": 8001
+    }
+  ]
+}

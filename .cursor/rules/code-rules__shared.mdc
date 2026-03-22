@@ -1,9 +1,9 @@
 ---
 description: 
-globs: 
 alwaysApply: true
 ---
-1. Don't be too defensive! Use fail-fast strategy. Example: if you read a CSV file with pandas and some columns are expected - just expect them to exist and fail ungracefully otherwise. Apply this mindset to make code concise.
+
+1. Don't be defensive! Use fail-fast and loud strategy. Example: if you read a CSV file with pandas and some columns are expected - just expect them to exist and fail ungracefully otherwise. Apply this mindset to make code concise.
 2. Always use a main func to minimize global vars scope.
 3. For command line arguments, use minimalistic style:
     def parse_daily_feed_options():

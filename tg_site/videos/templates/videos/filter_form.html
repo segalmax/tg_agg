@@ -1,4 +1,6 @@
-<form method="get" action="/" id="filterForm">
+<form method="get" action="/" id="filterForm"
+      data-default-date-from="{{ filters.default_date_from }}"
+      data-default-date-to="{{ filters.default_date_to }}">
     <!-- Search -->
     <div class="mb-3">
         <label class="form-label fw-bold">🔍 Search</label>
@@ -74,7 +76,11 @@
                 {% empty %}
                 <div class="text-muted small">No channels yet</div>
                 {% endfor %}
-                <div class="border-top pt-2 mt-1">
+                <div class="border-top pt-2 mt-1 d-flex gap-2 justify-content-between align-items-center flex-wrap">
+                    <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" id="channelSelectAllBtn">Select all</button>
+                    <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" id="channelClearAllBtn">Clear all</button>
+                </div>
+                <div class="pt-2 mt-1">
                     <button type="button" class="btn btn-primary btn-sm w-100" id="applyChannelsBtn">Apply</button>
                 </div>
             </div>
@@ -158,15 +164,16 @@
     <div class="mb-3">
         <label class="form-label fw-bold">⬆️ Sort By</label>
         <select name="sort" id="sortSelect" class="form-select form-select-sm">
-            <option value="-date" {% if filters.sort == '-date' %}selected{% endif %}>Newest First</option>
-            <option value="date" {% if filters.sort == 'date' %}selected{% endif %}>Oldest First</option>
-            <option value="-views" {% if filters.sort == '-views' %}selected{% endif %}>Most Views</option>
-            <option value="-forwards" {% if filters.sort == '-forwards' %}selected{% endif %}>Most Forwards</option>
-            <option value="-replies" {% if filters.sort == '-replies' %}selected{% endif %}>Most Replies</option>
-            <option value="-popular" {% if filters.sort == '-popular' %}selected{% endif %}>Popular (all-time)</option>
-            <option value="-trending" {% if filters.sort == '-trending' %}selected{% endif %}>Trending (now)</option>
-            <option value="-viral" {% if filters.sort == '-viral' %}selected{% endif %}>Viral (most shared)</option>
+            <option value="-trending" {% if filters.sort == '-trending' %}selected{% endif %} title="(views + forwards×30 + replies×5) ÷ (age_hours + 2)^1.5 — higher first">Trending (now)</option>
+            <option value="-date" {% if filters.sort == '-date' %}selected{% endif %} title="Newest post date first">Newest First</option>
+            <option value="date" {% if filters.sort == 'date' %}selected{% endif %} title="Oldest post date first">Oldest First</option>
+            <option value="-views" {% if filters.sort == '-views' %}selected{% endif %} title="Highest views first">Most Views</option>
+            <option value="-forwards" {% if filters.sort == '-forwards' %}selected{% endif %} title="Highest forwards first">Most Forwards</option>
+            <option value="-replies" {% if filters.sort == '-replies' %}selected{% endif %} title="Highest replies first">Most Replies</option>
+            <option value="-popular" {% if filters.sort == '-popular' %}selected{% endif %} title="views + forwards×30 + replies×5 — higher first">Popular (weighted)</option>
+            <option value="-viral" {% if filters.sort == '-viral' %}selected{% endif %} title="forwards ÷ (views + 1) — higher first">Viral (most shared)</option>
         </select>
+        <small id="sortFormulaHint" class="form-text text-muted d-block mt-1"></small>
     </div>
     
     <!-- Clear All Button -->
@@ -204,16 +211,49 @@ function htmxRefresh() {
     htmx.ajax('GET', url, { target: '#grid-container', swap: 'innerHTML' });
 }
 
-function hasActiveFilters() {
+const SORT_FORMULAS = {
+    '-trending': 'Trending: (views + forwards×30 + replies×5) ÷ (age in hours + 2)^1.5 — higher ranks first.',
+    '-date': 'Newest: ordered by post date, newest first.',
+    'date': 'Oldest: ordered by post date, oldest first.',
+    '-views': 'Most views: ordered by views count.',
+    '-forwards': 'Most forwards: ordered by forwards count.',
+    '-replies': 'Most replies: ordered by replies count.',
+    '-popular': 'Popular (weighted): views + forwards×30 + replies×5 — higher first.',
+    '-viral': 'Viral: forwards ÷ (views + 1) — higher first.',
+};
+
+function updateSortFormulaHint() {
+    const sel = document.getElementById('sortSelect');
+    const hint = document.getElementById('sortFormulaHint');
+    if (!sel || !hint) return;
+    hint.textContent = SORT_FORMULAS[sel.value] || '';
+}
+
+function datesMatchServerDefault() {
     const form = document.getElementById('filterForm');
+    const defFrom = form?.dataset.defaultDateFrom;
+    const defTo = form?.dataset.defaultDateTo ?? '';
+    const dateFrom = document.getElementById('dateFrom').value;
+    const dateTo = document.getElementById('dateTo').value;
+    if (!defFrom) return true;
+    if (window.location.pathname !== '/' && !dateFrom && !dateTo) return true;
+    if (!defTo) {
+        if (!dateFrom && !dateTo) return false;
+        return dateFrom === defFrom && dateTo === '';
+    }
+    if (!dateFrom && !dateTo) return false;
+    return dateFrom === defFrom && dateTo === defTo;
+}
+
+function hasActiveFilters() {
     const searchQuery = document.getElementById('searchInput').value.trim();
     const channels = document.getElementById('channelsInput').value.trim();
     const media = document.querySelector('input[name="media"]:checked').value;
-    const dateFrom = document.getElementById('dateFrom').value;
-    const dateTo = document.getElementById('dateTo').value;
     const sort = document.getElementById('sortSelect').value;
-    
-    return searchQuery || channels || media !== 'video' || dateFrom || dateTo || sort !== '-date';
+    const keywordsOn = document.getElementById('searchKeywords').checked;
+    const semanticOn = document.getElementById('searchSemantic').checked;
+    const searchNonDefault = semanticOn || !keywordsOn;
+    return searchQuery || channels || media !== 'video' || !datesMatchServerDefault() || sort !== '-trending' || searchNonDefault;
 }
 
 function updateClearAllButton() {
@@ -327,6 +367,20 @@ document.getElementById('applyChannelsBtn').addEventListener('click', () => {
     htmxRefresh();
 });
 
+document.getElementById('channelSelectAllBtn').addEventListener('click', (e) => {
+    e.preventDefault();
+    document.querySelectorAll('.channel-checkbox').forEach(cb => { cb.checked = true; });
+    updateChannelsInput();
+    updateClearAllButton();
+});
+
+document.getElementById('channelClearAllBtn').addEventListener('click', (e) => {
+    e.preventDefault();
+    document.querySelectorAll('.channel-checkbox').forEach(cb => { cb.checked = false; });
+    updateChannelsInput();
+    updateClearAllButton();
+});
+
 // ====== Media Type Radio Buttons ======
 document.querySelectorAll('.media-radio').forEach(radio => {
     radio.addEventListener('change', () => {
@@ -338,12 +392,14 @@ document.querySelectorAll('.media-radio').forEach(radio => {
 // ====== Date Range ======
 ['dateFrom', 'dateTo'].forEach(id => {
     const el = document.getElementById(id);
-    el.addEventListener('blur', () => { updateClearAllButton(); htmxRefresh(); });
+    el.addEventListener('change', () => { updateClearAllButton(); htmxRefresh(); });
+    el.addEventListener('blur', () => { updateClearAllButton(); });
     el.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); updateClearAllButton(); htmxRefresh(); } });
 });
 
 // ====== Sort By ======
 document.getElementById('sortSelect').addEventListener('change', () => {
+    updateSortFormulaHint();
     updateClearAllButton();
     htmxRefresh();
 });
@@ -395,6 +451,7 @@ document.getElementById('addChannelBtn').addEventListener('click', async () => {
 
 // ====== Initialization ======
 updateChannelDropdownLabel();
+updateSortFormulaHint();
 updateClearAllButton();
 loadFiltersFromStorage();
 

@@ -139,15 +139,26 @@ function renderFilterChips() {
 
     const dateFrom = urlParams.get('date_from');
     const dateTo = urlParams.get('date_to');
+    const formEl = document.getElementById('filterForm');
+    const defFrom = formEl?.dataset.defaultDateFrom;
+    const defTo = formEl?.dataset.defaultDateTo;
     if (dateFrom || dateTo) {
-        const label = dateFrom && dateTo ? `📅 ${dateFrom} to ${dateTo}`
-            : dateFrom ? `📅 From ${dateFrom}` : `📅 Until ${dateTo}`;
-        chips.push({ label, param: 'date_range' });
+        const defToVal = defTo ?? '';
+        const isDefaultFromOnly = defFrom && !defToVal && dateFrom === defFrom && !dateTo;
+        const isLegacyBothEnds = defFrom && defToVal && dateFrom === defFrom && dateTo === defToVal;
+        if (!isDefaultFromOnly && !isLegacyBothEnds) {
+            const label = dateFrom && dateTo ? `📅 ${dateFrom} to ${dateTo}`
+                : dateFrom ? `📅 From ${dateFrom}` : `📅 Until ${dateTo}`;
+            chips.push({ label, param: 'date_range' });
+        }
     }
 
-    const sort = urlParams.get('sort') || '-date';
-    if (sort !== '-date') {
-        const sortLabels = { 'date': 'Oldest First', '-views': 'Most Views', '-forwards': 'Most Forwards', '-replies': 'Most Replies' };
+    const sort = urlParams.get('sort') || '-trending';
+    if (sort !== '-trending') {
+        const sortLabels = {
+            '-date': 'Newest First', 'date': 'Oldest First', '-views': 'Most Views', '-forwards': 'Most Forwards',
+            '-replies': 'Most Replies', '-popular': 'Popular (weighted)', '-trending': 'Trending', '-viral': 'Viral',
+        };
         chips.push({ label: `⬆️ ${sortLabels[sort] || sort}`, param: 'sort' });
     }
 
@@ -174,7 +185,8 @@ function removeFilterChip(param, value) {
     } else if (param === 'media') {
         document.querySelector('input[name="media"][value="video"]').checked = true;
     } else if (param === 'sort') {
-        document.getElementById('sortSelect').value = '-date';
+        document.getElementById('sortSelect').value = '-trending';
+        if (typeof updateSortFormulaHint === 'function') updateSortFormulaHint();
     }
     if (typeof updateClearAllButton === 'function') updateClearAllButton();
     htmxRefresh();
@@ -323,6 +335,10 @@ async function showVideoModal(card, videoData) {
     document.getElementById('modalPostData').innerHTML = `
         <div class="mb-2"><strong>Channel:</strong> ${card.dataset.channel}</div>
         <div class="mb-2"><strong>Views:</strong> 👁 ${card.dataset.views || '0'}</div>
+        <div class="mb-2"><strong>Forwards:</strong> ↪️ ${card.dataset.forwards || '0'}</div>
+        <div class="mb-2"><strong>Replies:</strong> 💬 ${card.dataset.replies || '0'}</div>
+        <div class="mb-2"><strong>Weighted:</strong> ⚡ ${card.dataset.weightedScore || '0'}</div>
+        <div class="mb-2"><strong>Viral:</strong> ↗ ${Number(card.dataset.viralRatio || 0).toFixed(4)}</div>
         <div class="mb-2"><strong>Date:</strong> ${datetime ? formatDateTimeFull(datetime) : 'Unknown'}</div>
         <div class="mb-3"><strong>Description:</strong><br>${card.dataset.text || 'No description'}</div>
         <a href="${card.dataset.link}" target="_blank" class="btn btn-primary">
@@ -367,6 +383,10 @@ function showPhotoModal(card, mediaData) {
     document.getElementById('modalPostData').innerHTML = `
         <div class="mb-2"><strong>Channel:</strong> ${card.dataset.channel}</div>
         <div class="mb-2"><strong>Views:</strong> 👁 ${card.dataset.views || '0'}</div>
+        <div class="mb-2"><strong>Forwards:</strong> ↪️ ${card.dataset.forwards || '0'}</div>
+        <div class="mb-2"><strong>Replies:</strong> 💬 ${card.dataset.replies || '0'}</div>
+        <div class="mb-2"><strong>Weighted:</strong> ⚡ ${card.dataset.weightedScore || '0'}</div>
+        <div class="mb-2"><strong>Viral:</strong> ↗ ${Number(card.dataset.viralRatio || 0).toFixed(4)}</div>
         <div class="mb-2"><strong>Date:</strong> ${datetime ? formatDateTimeFull(datetime) : 'Unknown'}</div>
         <div class="mb-3"><strong>Description:</strong><br>${card.dataset.text || 'No description'}</div>
         <a href="${card.dataset.link}" target="_blank" class="btn btn-primary">
@@ -405,10 +425,20 @@ document.getElementById('prevPostBtn').addEventListener('click', () => navigateP
 document.getElementById('nextPostBtn').addEventListener('click', () => navigatePost(1));
 
 document.addEventListener('keydown', (e) => {
-    if (!document.getElementById('videoModal').classList.contains('show')) return;
+    const modalEl = document.getElementById('videoModal');
+    if (!modalEl.classList.contains('show')) return;
     if (e.key === 'ArrowLeft') { e.preventDefault(); navigatePost(-1); }
     else if (e.key === 'ArrowRight') { e.preventDefault(); navigatePost(1); }
 });
+
+document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const modalEl = document.getElementById('videoModal');
+    if (!modalEl.classList.contains('show')) return;
+    e.preventDefault();
+    const inst = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
+    inst.hide();
+}, true);
 
 // ====== HTMX lifecycle hooks ======
 document.body.addEventListener('htmx:beforeRequest', showLoadingBar);
@@ -417,6 +447,7 @@ document.body.addEventListener('htmx:afterSwap', (e) => {
         hideLoadingBar();
         initCards();
         renderFilterChips();
+        if (typeof updateSortFormulaHint === 'function') updateSortFormulaHint();
     }
 });
 

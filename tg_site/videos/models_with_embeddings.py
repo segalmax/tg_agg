@@ -1,7 +1,6 @@
 from django.db import models
 from pgvector.django import VectorField
 from sentence_transformers import SentenceTransformer
-import numpy as np
 
 
 class EmbeddingGenerator:

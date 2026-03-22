@@ -100,7 +100,15 @@ class Post(models.Model):
 
     def __str__(self):
         return f"{self.channel.username} - {self.telegram_id}"
-    
+
+    def weighted_engagement_score(self):
+        """Same raw signal as Popular / Trending numerator: views + forwards×30 + replies×5."""
+        return self.views + self.forwards * 30 + self.replies * 5
+
+    def viral_ratio(self):
+        """Same as sort -viral: forwards ÷ (views + 1)."""
+        return float(self.forwards) / (float(self.views) + 1.0)
+
     @classmethod
     def semantic_search(cls, query_text, limit=10, filters=None):
         """
@@ -136,7 +144,6 @@ class Post(models.Model):
         
         Learning: This shows how to blend old and new approaches.
         """
-        from django.db.models import Q
         
         # Get semantic results (highest priority)
         semantic_results = list(cls.semantic_search(query_text, limit=limit*2))

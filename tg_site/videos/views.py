@@ -1,6 +1,9 @@
+from datetime import timedelta
+
 from django.shortcuts import render, get_object_or_404
 from django.core.paginator import Paginator
 from django.http import JsonResponse
+from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from django.db.models import ExpressionWrapper, FloatField, F
@@ -8,7 +11,8 @@ from django.db.models.expressions import RawSQL
 from .models import Channel, Post
 import urllib.request
 import re
-import os
+
+DEFAULT_SORT = '-trending'
 
 
 ALLOWED_SORTS = [
@@ -68,14 +72,21 @@ def home(request):
     elif media_filter == 'has_media':
         additional_filters &= Q(has_media=True)
     
-    # Date range filters (inclusive on both ends)
-    date_from = request.GET.get('date_from', '').strip()
-    if date_from:
-        additional_filters &= Q(date__date__gte=date_from)
-
-    date_to = request.GET.get('date_to', '').strip()
-    if date_to:
-        additional_filters &= Q(date__date__lte=date_to)
+    # Date range (inclusive). Default when GET omits both keys: from = 7 days ago, no default "to" (open-ended).
+    today = timezone.localdate()
+    default_date_from = (today - timedelta(days=7)).isoformat()
+    implicit_date_range = 'date_from' not in request.GET and 'date_to' not in request.GET
+    if implicit_date_range:
+        date_from_effective = default_date_from
+        date_to_effective = ''
+        additional_filters &= Q(date__date__gte=date_from_effective)
+    else:
+        date_from_effective = request.GET.get('date_from', '').strip()
+        date_to_effective = request.GET.get('date_to', '').strip()
+        if date_from_effective:
+            additional_filters &= Q(date__date__gte=date_from_effective)
+        if date_to_effective:
+            additional_filters &= Q(date__date__lte=date_to_effective)
     
     # Now apply search with all filters
     if search_query:
@@ -102,9 +113,11 @@ def home(request):
         # No search query - apply filters to all posts
         posts = Post.objects.select_related('channel').filter(additional_filters)
     
-    # Sorting (skip for semantic/hybrid as they're already sorted by relevance)
-    if not search_semantic:
-        sort_by = request.GET.get('sort', '-date')
+    implicit_sort = 'sort' not in request.GET
+    # Pure semantic (keywords off): keep embedding relevance order. Keywords or hybrid: honor sort.
+    semantic_only = search_semantic and not search_keywords
+    if not semantic_only:
+        sort_by = request.GET.get('sort', DEFAULT_SORT)
         if sort_by in ALLOWED_SORTS:
             posts = apply_sort(posts, sort_by)
     
@@ -115,10 +128,14 @@ def home(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
-    # Build query params for pagination
+    # Build query params for pagination (merge implicit defaults so page links keep state)
     query_params = request.GET.copy()
     if 'page' in query_params:
         query_params.pop('page')
+    if implicit_date_range:
+        query_params['date_from'] = date_from_effective
+    if implicit_sort:
+        query_params['sort'] = DEFAULT_SORT
     query_string = '&' + query_params.urlencode() if query_params else ''
     
     # Count total posts matching filters
@@ -134,9 +151,11 @@ def home(request):
         'filters': {
             'channels': channel_filter or '',
             'media': media_filter or 'video',
-            'date_from': date_from or '',
-            'date_to': date_to or '',
-            'sort': request.GET.get('sort', '-date'),
+            'date_from': date_from_effective if implicit_date_range else (request.GET.get('date_from', '').strip()),
+            'date_to': date_to_effective if implicit_date_range else (request.GET.get('date_to', '').strip()),
+            'default_date_from': default_date_from,
+            'default_date_to': '',
+            'sort': request.GET.get('sort', DEFAULT_SORT),
         }
     })
 
@@ -148,10 +167,24 @@ def channel_posts(request, username):
     paginator = Paginator(posts, 50)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    
+    today = timezone.localdate()
+    channels = Channel.objects.all().order_by('username')
     return render(request, 'videos/post_list.html', {
         'page_obj': page_obj,
         'channel': channel,
+        'channels': channels,
+        'search_query': '',
+        'query_string': '',
+        'total_count': posts.count(),
+        'filters': {
+            'channels': '',
+            'media': 'video',
+            'date_from': '',
+            'date_to': '',
+            'default_date_from': (today - timedelta(days=7)).isoformat(),
+            'default_date_to': '',
+            'sort': DEFAULT_SORT,
+        },
     })
 
 
@@ -190,7 +223,7 @@ def post_detail(request, username, post_id):
     if date_to:
         posts = posts.filter(date__date__lte=date_to)
     
-    sort_by = request.GET.get('sort', '-date')
+    sort_by = request.GET.get('sort', DEFAULT_SORT)
     if sort_by in ALLOWED_SORTS:
         posts = apply_sort(posts, sort_by)
 
@@ -323,7 +356,7 @@ def add_channel(request):
             return JsonResponse({'success': False, 'error': 'Channel already exists'}, status=400)
         
         # Create channel with username as title (fetcher will update it later)
-        channel = Channel.objects.create(username=username, title=username)
+        Channel.objects.create(username=username, title=username)
         
         return JsonResponse({
             'success': True,

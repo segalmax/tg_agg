@@ -1,0 +1,11 @@
+{# post, sort_mode (e.g. filters.sort) #}
+<div class="small text-muted text-nowrap">
+    👁 {{ post.views|default:"0" }} <span class="text-secondary">·</span>
+    ↪️ {{ post.forwards|default:"0" }} <span class="text-secondary">·</span>
+    💬 {{ post.replies|default:"0" }} <span class="text-secondary">·</span>
+    {% if sort_mode == '-viral' %}
+    <span title="forwards ÷ (views + 1), higher = more shared per view">↗ {{ post.viral_ratio|floatformat:4 }}</span>
+    {% else %}
+    <span title="views + forwards×30 + replies×5">⚡ {{ post.weighted_engagement_score }}</span>
+    {% endif %}
+</div>

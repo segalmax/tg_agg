@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
-Generate a Telegram session string for Railway deployment.
-This creates a NEW session (separate from your local one).
+Generate a Telegram session string and push it to Railway.
 
 Required env vars (add to .env):
   API_ID    — from https://my.telegram.org
@@ -10,6 +9,7 @@ Required env vars (add to .env):
 """
 import os
 import sys
+import subprocess
 from dotenv import load_dotenv
 from telethon.sync import TelegramClient
 from telethon.sessions import StringSession
@@ -25,36 +25,23 @@ if not API_ID or not API_HASH or not PHONE:
     print("   Add them to tg_site/.env and re-run.")
     sys.exit(1)
 
-print("=" * 70)
-print("🔐 Telegram Session String Generator for Railway")
-print("=" * 70)
-print()
-print("This will create a NEW session (separate from your local one)")
-print("You'll receive an OTP code via Telegram")
+print("🔐 Generating Telegram session — you'll receive an OTP via Telegram...")
 print()
 
 client = TelegramClient(StringSession(), int(API_ID), API_HASH)
 client.start(phone=PHONE)
-
-print("✅ Connected to Telegram")
-print()
-
 session_string = client.session.save()
 client.disconnect()
 
-print("=" * 70)
-print("✅ SESSION STRING GENERATED!")
-print("=" * 70)
 print()
-print("Copy this string and add it to Railway as an environment variable:")
-print()
-print("Variable name:  SESSION_STRING")
-print("Variable value: (below)")
-print()
-print(session_string)
-print()
-print("=" * 70)
-print()
-print("Or via CLI:")
-print(f'railway variables --service telegram-monitor --set "SESSION_STRING=<paste the string above>"')
-print()
+print("✅ Session generated — pushing to Railway...")
+result = subprocess.run(
+    ["railway", "variables", "--service", "telegram-monitor", "--set", f"SESSION_STRING={session_string}"],
+    capture_output=True, text=True
+)
+if result.returncode == 0:
+    print("✅ SESSION_STRING set on Railway. telegram-monitor will redeploy automatically.")
+else:
+    print(f"❌ Failed to set Railway variable: {result.stderr}")
+    print("   Set it manually:")
+    print(f'   railway variables --service telegram-monitor --set "SESSION_STRING={session_string}"')

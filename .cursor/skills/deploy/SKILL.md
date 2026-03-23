@@ -84,7 +84,7 @@ railway logs --lines 10 --service web
 railway logs --lines 10 --service telegram-monitor
 ```
 
-**CRASHED detection is tricky:** Railway's restart policy immediately creates new BUILDING deployments on top of a CRASHED one, pushing CRASHED down the list. Always scan ALL entries in `deployment list` output, not just line 1. If CRASHED appears anywhere in the recent entries, stop and report it to the user.
+**CRASHED detection:** Only check the status of the most recent entry (line 1). Older CRASHED entries are from previous deploys and are irrelevant. Railway's restart policy creates new BUILDING entries on top of a CRASHED one — so if the latest is BUILDING/DEPLOYING, keep polling; if it's CRASHED, stop and report.
 
 Stop when both services show SUCCESS as the most recent entry AND logs show no errors.
 

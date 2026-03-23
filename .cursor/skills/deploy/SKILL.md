@@ -75,26 +75,27 @@ git checkout main && git pull
 
 Railway auto-deploys both services on merge to main. Do NOT run `railway redeploy`.
 
-Poll every 15 seconds until both show `SUCCESS` (up to ~3 minutes):
+Poll every 15 seconds (up to ~5 minutes). Each iteration, run ALL of these:
 
 ```bash
 railway deployment list --service web
 railway deployment list --service telegram-monitor
+railway logs --lines 10 --service web
+railway logs --lines 10 --service telegram-monitor
 ```
 
-If either shows `CRASHED`, fetch logs and notify the user:
-```bash
-railway logs --lines 50 --service web
-railway logs --lines 50 --service telegram-monitor
-```
+**CRASHED detection is tricky:** Railway's restart policy immediately creates new BUILDING deployments on top of a CRASHED one, pushing CRASHED down the list. Always scan ALL entries in `deployment list` output, not just line 1. If CRASHED appears anywhere in the recent entries, stop and report it to the user.
 
-Note: never pipe `railway logs` to `tail` — it streams and never sends EOF, so `tail` hangs forever. Use `--lines N` instead.
+Stop when both services show SUCCESS as the most recent entry AND logs show no errors.
+
+Note: never pipe `railway logs` to `tail` — it streams and never sends EOF so tail hangs forever. Use `--lines N` instead.
 
 If `telegram-monitor` crashes with `AuthKeyDuplicatedError`, regenerate the session:
 ```bash
 python scripts/generate_session_string.py
 railway variables --service telegram-monitor --set "SESSION_STRING=<paste>"
 ```
+Then poll again until both show SUCCESS.
 
 ## Step 6 — Smoke test
 

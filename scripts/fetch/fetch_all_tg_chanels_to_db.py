@@ -190,6 +190,13 @@ def fetch_loop():
         print("❌ API_ID / API_HASH not set in environment variables")
         sys.exit(1)
     
+    # Railway rolling deploys briefly overlap old and new containers.
+    # Wait for the old container to exit before opening a Telegram session.
+    startup_delay = int(os.getenv("STARTUP_DELAY", "20"))
+    if startup_delay > 0:
+        print(f"⏳ Startup delay {startup_delay}s (waiting for old container to exit)...")
+        time.sleep(startup_delay)
+
     print("🚀 Starting channel fetch service...")
     print(f"⏱️  Check interval: {CHECK_INTERVAL}s")
     print(f"📅 Fetching last {DAYS_BACK} days (sliding window)")

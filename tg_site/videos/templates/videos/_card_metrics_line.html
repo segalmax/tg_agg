@@ -4,8 +4,8 @@
     ↪️ {{ post.forwards|default:"0" }} <span class="text-secondary">·</span>
     💬 {{ post.replies|default:"0" }} <span class="text-secondary">·</span>
     {% if sort_mode == '-viral' %}
-    <span title="forwards ÷ (views + 1), higher = more shared per view">↗ {{ post.viral_ratio|floatformat:4 }}</span>
+    <span title="forwards ÷ (views + 1) = {{ post.forwards }} ÷ ({{ post.views }} + 1) = {{ post.viral_ratio|floatformat:4 }}">↗ {{ post.viral_ratio|floatformat:4 }}</span>
     {% else %}
-    <span title="views + forwards×30 + replies×5">⚡ {{ post.weighted_engagement_score }}</span>
+    <span title="views + forwards×30 + replies×5 = {{ post.views }} + {{ post.forwards }}×30 + {{ post.replies }}×5 = {{ post.weighted_engagement_score }}">⚡ {{ post.weighted_engagement_score }}</span>
     {% endif %}
 </div>

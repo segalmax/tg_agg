@@ -5,7 +5,7 @@ description: Full deploy workflow for tg_agg (Railway + GitHub). Use when the us
 
 # Deploy
 
-Full workflow: feature branch → CI → PR → merge → Railway redeploy → smoke test.
+Full workflow: feature branch → CI → PR → merge → Railway auto-deploy → smoke test.
 
 ## Commit message convention
 
@@ -71,23 +71,45 @@ Once MERGED:
 git checkout main && git pull
 ```
 
-## Step 5 — Railway redeploy
+## Step 5 — Wait for Railway auto-deploy
+
+Railway auto-deploys both services on merge to main. Do NOT run `railway redeploy`.
+
+Poll every 15 seconds until both show `SUCCESS` (up to ~3 minutes):
 
 ```bash
-railway redeploy --service web --yes
-railway redeploy --service telegram-monitor --yes
+railway deployment list --service web
+railway deployment list --service telegram-monitor
 ```
 
-`railway logs` streaming is unreliable — skip it. Wait 30 seconds, then go straight to the browser smoke test.
+If either shows `CRASHED`, fetch logs and notify the user:
+```bash
+railway logs --lines 50 --service web
+railway logs --lines 50 --service telegram-monitor
+```
 
-## Step 6 — Browser smoke test
+Note: never pipe `railway logs` to `tail` — it streams and never sends EOF, so `tail` hangs forever. Use `--lines N` instead.
 
-Use the `cursor-ide-browser` MCP to:
+If `telegram-monitor` crashes with `AuthKeyDuplicatedError`, regenerate the session:
+```bash
+python scripts/generate_session_string.py
+railway variables --service telegram-monitor --set "SESSION_STRING=<paste>"
+```
+
+## Step 6 — Smoke test
+
+Use a browser tool to:
 1. Open `https://web-production-61089.up.railway.app`
 2. Verify the page loads (no 500 / crash page)
 3. Verify at least one video card is visible in the grid
 
-## Step 7 — Rollback (if smoke test fails)
+If PR touched any template / CSS / JS:
+4. Click a video card → verify the modal opens
+5. Take a screenshot and show it to the user
+
+Report results to the user.
+
+## Step 7 — Rollback (if any check fails)
 
 ```bash
 railway rollback --service web

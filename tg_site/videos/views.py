@@ -136,8 +136,8 @@ def home(request):
         query_params['date_from'] = date_from_effective
     if implicit_sort:
         query_params['sort'] = DEFAULT_SORT
-    query_string = '&' + query_params.urlencode() if query_params else ''
-    
+    query_string = query_params.urlencode()
+
     # Count total posts matching filters
     total_count = posts.count()
     

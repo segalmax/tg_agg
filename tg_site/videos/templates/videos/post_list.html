@@ -42,32 +42,65 @@ dialog.fancybox__dialog::backdrop { display: none; }
 .fancybox__slide { height: 100% !important; }
 .fancybox__slide.has-html { padding: 0 !important; }
 .fancybox__sidebar { background: #fff; height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+/* Desktop: override offcanvas-md to render as a normal sticky sidebar */
+@media (min-width: 768px) {
+    .filter-offcanvas-sidebar {
+        background-color: #fff !important;
+        border-right: 1px solid #dee2e6;
+    }
+    .filter-offcanvas-sidebar-body {
+        position: sticky !important;
+        top: 56px !important;
+        max-height: calc(100vh - 56px) !important;
+        overflow-y: auto !important;
+        flex-direction: column !important;
+        flex-grow: 1 !important;
+        padding: 1rem !important;
+    }
+}
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid">
     <div class="row">
-        <!-- Sidebar -->
-        <div class="col-md-3 col-lg-2 bg-white p-3 sticky-top d-none d-md-block" style="top: 56px; height: calc(100vh - 56px); overflow-y: auto;">
-            {% include 'videos/filter_form.html' %}
-        </div>
-
-        <!-- Desktop-only notice on small screens -->
-        <div class="d-md-none text-center py-5 w-100">
-            <h4>🖥️ Desktop only</h4>
-            <p class="text-muted">Please open this site on a desktop browser.</p>
+        <!-- Filter sidebar: offcanvas drawer on mobile, sticky column on desktop -->
+        <div class="offcanvas-md offcanvas-start col-md-3 col-lg-2 filter-offcanvas-sidebar"
+             tabindex="-1"
+             id="filterOffcanvas"
+             aria-labelledby="filterOffcanvasLabel"
+             style="--bs-offcanvas-width: 290px;">
+            <div class="offcanvas-header d-md-none border-bottom">
+                <h5 class="offcanvas-title" id="filterOffcanvasLabel">
+                    <i class="bi bi-funnel"></i> Filters
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            </div>
+            <div class="offcanvas-body filter-offcanvas-sidebar-body p-3">
+                {% include 'videos/filter_form.html' %}
+            </div>
         </div>
 
         <!-- Main Content -->
-        <div class="col-md-9 col-lg-10 d-none d-md-block">
+        <div class="col-12 col-md-9 col-lg-10">
+            <!-- Mobile: sticky Filters toggle button -->
+            <div class="d-md-none sticky-top py-2 px-2 bg-light border-bottom" style="top: 56px; z-index: 100;">
+                <button class="btn btn-sm btn-outline-secondary"
+                        type="button"
+                        data-bs-toggle="offcanvas"
+                        data-bs-target="#filterOffcanvas"
+                        aria-controls="filterOffcanvas">
+                    <i class="bi bi-funnel"></i> Filters
+                </button>
+            </div>
+
             <div class="container-fluid py-3">
                 {% if channel %}
                 <div class="alert alert-info">
                     <strong>Channel:</strong> {{ channel.username }}
                 </div>
                 {% endif %}
-                
+
                 <!-- Swappable grid region -->
                 <div id="grid-container">
                     {% include 'videos/grid_partial.html' %}
@@ -501,8 +534,31 @@ document.addEventListener('keydown', (e) => {
     window.Fancybox.close();
 }, true);
 
+// ====== Skeleton loading ======
+function injectSkeletonCards(container) {
+    const skeletonCardHtml = `
+        <div class="col">
+            <div class="card h-100">
+                <div class="skeleton-card-thumbnail"></div>
+                <div class="card-body p-2">
+                    <div class="skeleton-card-text-line mb-2"></div>
+                    <div class="skeleton-card-text-line skeleton-card-text-line-short"></div>
+                </div>
+            </div>
+        </div>`;
+    container.innerHTML = `<div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-4">${skeletonCardHtml.repeat(8)}</div>`;
+}
+
 // ====== HTMX lifecycle hooks ======
 document.body.addEventListener('htmx:beforeRequest', showLoadingBar);
+document.body.addEventListener('htmx:beforeRequest', (event) => {
+    const triggerEl = event.detail.elt;
+    const targetsGrid = triggerEl?.getAttribute('hx-target') === '#grid-container' ||
+                        triggerEl?.closest('[hx-target="#grid-container"]');
+    if (!targetsGrid) return;
+    const gridContainer = document.getElementById('grid-container');
+    if (gridContainer) injectSkeletonCards(gridContainer);
+});
 document.body.addEventListener('htmx:afterSwap', (e) => {
     if (e.detail.target.id === 'grid-container') {
         hideLoadingBar();
@@ -510,6 +566,10 @@ document.body.addEventListener('htmx:afterSwap', (e) => {
         renderFilterChips();
         if (typeof updateSortFormulaHint === 'function') updateSortFormulaHint();
     }
+});
+document.body.addEventListener('htmx:afterSettle', (event) => {
+    if (event.detail.target.id !== 'grid-container') return;
+    document.querySelectorAll('.skeleton-card-thumbnail').forEach(el => el.closest('.col')?.remove());
 });
 
 // Initial render

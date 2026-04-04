@@ -7,7 +7,9 @@
 - `MySQL`: Legacy, no longer used
 
 ## Start Commands (Railway UI → Deploy section)
-- `web`: `cd tg_site && python manage.py migrate && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT`
+- `web`: `cd tg_site && python manage.py migrate && python manage.py collectstatic --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT`
+
+**Why `collectstatic`:** Settings use `whitenoise.storage.CompressedManifestStaticFilesStorage`. Templates use `{% static %}`, which needs `staticfiles.json` from collectstatic. Skipping it → missing manifest → **500** on pages that render those templates.
 - `telegram-monitor`: `python scripts/fetch/fetch_all_tg_chanels_to_db.py`
 
 ## Environment Variables
@@ -74,6 +76,7 @@ To backfill historical data (e.g. after switching DB):
 2. Get crash logs via Railway API or `railway logs --service web`
 3. Common causes: missing env var, DB connection failure, bad migration
 4. After env var changes, redeploy the affected service
+5. **500 after static/template changes:** Confirm deploy runs **`collectstatic`** (see start command above). If the Railway UI custom start command omits it, align with `Procfile` or add `collectstatic --noinput` before Gunicorn.
 
 ### `InconsistentMigrationHistory` (videos.0001 before 0000_enable_pgvector_extension)
 Happens if production already had `videos.0001_initial` applied, then `0000_enable_pgvector_extension` was added as its dependency. The extension already exists on the pgvector service; Django only needs the history row.

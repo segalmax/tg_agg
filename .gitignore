@@ -15,10 +15,13 @@ ENV/
 db.sqlite3
 db.sqlite3-journal
 /staticfiles/
+tg_site/staticfiles/
 /media/
 
 # Environment variables
 .env
+.env.bak*
+.playwright-mcp/
 
 # Telegram session (sensitive!)
 *.session

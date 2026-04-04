@@ -1,12 +1,13 @@
 {% extends 'videos/base.html' %}
+{% load static %}
 
 {% block title %}
     {% if channel %}{{ channel.username }} - Telegram Videos{% else %}Telegram Videos{% endif %}
 {% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="/static/videos/vendor/fancybox/fancybox.css" />
-<link rel="stylesheet" href="/static/videos/vendor/fancybox/fancybox.sidebar.css" />
+<link rel="stylesheet" href="{% static 'videos/vendor/fancybox/fancybox.css' %}" />
+<link rel="stylesheet" href="{% static 'videos/vendor/fancybox/fancybox.sidebar.css' %}" />
 <style>
 .video-card {
     cursor: pointer;
@@ -115,8 +116,8 @@ dialog.fancybox__dialog::backdrop { display: none; }
 
 {% block extra_js %}
 <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
-<script src="/static/videos/vendor/fancybox/fancybox.umd.js"></script>
-<script src="/static/videos/vendor/fancybox/fancybox.sidebar.umd.js"></script>
+<script src="{% static 'videos/vendor/fancybox/fancybox.umd.js' %}"></script>
+<script src="{% static 'videos/vendor/fancybox/fancybox.sidebar.umd.js' %}"></script>
 <script>
 // ====== Filter Chips ======
 function renderFilterChips() {

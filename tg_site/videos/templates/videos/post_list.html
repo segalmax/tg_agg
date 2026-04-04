@@ -5,6 +5,8 @@
 {% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="/static/videos/vendor/fancybox/fancybox.css" />
+<link rel="stylesheet" href="/static/videos/vendor/fancybox/fancybox.sidebar.css" />
 <style>
 .video-card {
     cursor: pointer;
@@ -23,203 +25,23 @@
     object-fit: cover;
     z-index: 10;
 }
-/* Fullscreen modal */
-#videoModal .modal-dialog {
-    width: 100vw;
-    height: 100vh;
-    max-width: 100vw;
-    margin: 0;
-}
-#videoModal .modal-content {
-    height: 100vh;
-    border-radius: 0;
-    border: none;
-    background: transparent;
-    display: flex;
-    flex-direction: row;
-    position: relative;
-    overflow: hidden;
-}
-/* Semi-transparent backdrop */
-#videoModal + .modal-backdrop {
-    opacity: 0.55;
-}
-/* Media area */
-#modalVideoContainer {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0,0,0,0.7);
-    overflow: hidden;
-    position: relative;
-}
-/* Direct img (photo modal) — Plyr manages its own video element */
-#modalVideoContainer > img {
-    max-width: 100%;
-    max-height: 100vh;
-    width: auto;
-    height: auto;
-    object-fit: contain;
-    background: #000;
-    display: block;
-}
-#modalVideoContainer iframe {
-    width: 360px;
-    height: 640px;
-    border: none;
-    border-radius: 8px;
-    background: #000;
-}
-/* Sidebar */
-#modalSidebar {
-    width: 300px;
-    min-width: 300px;
-    background: rgba(17,17,17,0.82);
-    color: #fff;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-#modalSidebarInner {
-    display: grid;
-    grid-template-rows: auto auto 1fr auto;
-    height: 100%;
-    padding: 16px 14px;
-    gap: 0;
-}
-.modal-channel {
-    font-size: 1rem;
-    font-weight: 600;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-.modal-date {
-    font-size: 0.75rem;
-    margin-top: 2px;
-    color: #888;
-}
-.modal-stats {
-    font-size: 0.82rem;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px 10px;
-    padding: 10px 0;
-    border-top: 1px solid #2a2a2a;
-    margin-top: 10px;
-}
-.modal-text {
-    font-size: 0.83rem;
-    color: #bbb;
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 99;
-    line-clamp: 99;
-    border-top: 1px solid #2a2a2a;
-    padding-top: 10px;
-    align-self: stretch;
-}
-#modalLink {
-    padding-top: 12px;
-}
-/* Close button */
-#modalCloseBtn {
-    position: absolute;
-    top: 14px;
-    right: 14px;
-    z-index: 1060;
-    opacity: 0.8;
-    filter: drop-shadow(0 0 4px #000);
-}
-#modalCloseBtn:hover { opacity: 1; }
-/* Nav arrows — top/bottom of video area, matching ↑/↓ keyboard shortcuts */
-.modal-nav-btn {
-    position: absolute;
-    left: calc((100vw - 300px) / 2);
-    transform: translateX(-50%);
-    z-index: 1055;
-    background: rgba(0,0,0,0.45);
-    color: #fff;
-    border: none;
-    width: 80px;
-    height: 44px;
-    border-radius: 6px;
-    font-size: 1.4rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.15s;
-    cursor: pointer;
-}
-.modal-nav-btn:hover { background: rgba(0,0,0,0.75); }
-.modal-nav-btn:disabled { opacity: 0.2; cursor: default; }
-.modal-nav-prev { top: 8px; }
-.modal-nav-next { bottom: 70px; }
-/* Fixed-width centered controls bar — width matches 9:16 portrait video natural width */
-#modalVideoContainer .plyr__controls {
-    width: calc((100vh - 56px) * 9 / 16);
-    left: 50% !important;
-    right: auto !important;
-    transform: translateX(-50%);
-    border-radius: 8px;
-    bottom: 12px !important;
-    background: rgba(0,0,0,0.72) !important;
-    backdrop-filter: blur(6px);
-}
-/* Plyr fills the container and centers the video */
-#modalVideoContainer .plyr {
-    width: 100%;
-    height: 100%;
-}
-#modalVideoContainer .plyr--video {
-    background: transparent;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-}
-#modalVideoContainer .plyr__video-wrapper {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    background: transparent !important;
-}
-/* YouTube-style speed indicator */
-#speedIndicator {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: rgba(0,0,0,0.6);
-    color: #fff;
-    font-size: 1.4rem;
-    font-weight: 600;
-    padding: 10px 18px;
-    border-radius: 6px;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.15s ease;
-    z-index: 1070;
-    white-space: nowrap;
-}
-#speedIndicator.visible {
-    opacity: 1;
-}
-#modalVideoContainer .plyr video {
-    width: auto;
-    height: auto;
-    max-width: 100%;
-    max-height: 100%;
-}
 .video-card .media-thumbnail {
     width: 100%;
     aspect-ratio: 9 / 16;
     object-fit: contain;
     background: transparent;
 }
+.fancybox__container { height: 100dvh; }
+/* Dialog sized to video+sidebar, centered — the 1fr left column fills exactly the video width */
+dialog.fancybox__dialog {
+    --sidebar-width: 350px;
+    height: 100dvh; max-height: 100dvh; margin: 0 auto; border: none; padding: 0; background: transparent;
+    width: min(calc(100dvh * 9 / 16 + var(--sidebar-width)), 100vw);
+}
+dialog.fancybox__dialog::backdrop { display: none; }
+.fancybox__slide { height: 100% !important; }
+.fancybox__slide.has-html { padding: 0 !important; }
+.fancybox__sidebar { background: #fff; height: 100%; display: flex; flex-direction: column; overflow: hidden; }
 </style>
 {% endblock %}
 
@@ -255,50 +77,13 @@
     </div>
 </div>
 
-<!-- Video Modal -->
-<div class="modal fade" id="videoModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
 
-            <!-- Close button overlaid top-right -->
-            <button type="button" id="modalCloseBtn"
-                    class="btn-close btn-close-white"
-                    data-bs-dismiss="modal"
-                    aria-label="Close"></button>
-
-            <!-- Left: media area -->
-            <div id="modalVideoContainer">
-                <div id="speedIndicator"></div>
-            </div>
-
-            <!-- Right: sidebar -->
-            <div id="modalSidebar">
-                <div id="modalSidebarInner">
-                    <div>
-                        <div id="modalChannel" class="modal-channel"></div>
-                        <div id="modalDate" class="modal-date"></div>
-                    </div>
-                    <div id="modalStats" class="modal-stats"></div>
-                    <div id="modalText" class="modal-text" dir="auto"></div>
-                    <div id="modalLink"></div>
-                </div>
-            </div>
-
-            <!-- Floating nav arrows -->
-            <button id="prevPostBtn" class="modal-nav-btn modal-nav-prev" aria-label="Previous">
-                <i class="bi bi-chevron-up"></i>
-            </button>
-            <button id="nextPostBtn" class="modal-nav-btn modal-nav-next" aria-label="Next">
-                <i class="bi bi-chevron-down"></i>
-            </button>
-
-        </div>
-    </div>
-</div>
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
+<script src="/static/videos/vendor/fancybox/fancybox.umd.js"></script>
+<script src="/static/videos/vendor/fancybox/fancybox.sidebar.umd.js"></script>
 <script>
 // ====== Filter Chips ======
 function renderFilterChips() {
@@ -506,109 +291,161 @@ function initCards() {
     });
 }
 
-function populateModalSidebar(card) {
-    const datetime = card.querySelector('.post-datetime')?.dataset.datetime;
-    document.getElementById('modalChannel').textContent = card.dataset.channel;
-    document.getElementById('modalDate').textContent = datetime ? formatDateTimeFull(datetime) : '';
-    document.getElementById('modalStats').innerHTML = `
-        <span>👁 ${Number(card.dataset.views||0).toLocaleString()}</span>
-        <span>↪️ ${Number(card.dataset.forwards||0).toLocaleString()}</span>
-        <span>💬 ${Number(card.dataset.replies||0).toLocaleString()}</span>
-        <span title="views + forwards×30 + replies×5 = ${card.dataset.views} + ${card.dataset.forwards}×30 + ${card.dataset.replies}×5 = ${Number(card.dataset.weightedScore||0).toLocaleString()}">⚡ ${Number(card.dataset.weightedScore||0).toLocaleString()}</span>
-        <span title="forwards ÷ (views + 1) = ${card.dataset.forwards} ÷ (${card.dataset.views} + 1) = ${Number(card.dataset.viralRatio||0).toFixed(4)}">↗ ${Number(card.dataset.viralRatio||0).toFixed(4)}</span>
-    `;
-    document.getElementById('modalText').textContent = card.dataset.text || '';
-    document.getElementById('modalLink').innerHTML = `
-        <a href="${card.dataset.link}" target="_blank" class="btn btn-primary btn-sm w-100">
-            <i class="bi bi-telegram"></i> Open in Telegram
-        </a>`;
-    document.getElementById('prevPostBtn').disabled = currentModalIndex === 0;
-    document.getElementById('nextPostBtn').disabled = currentModalIndex === allCards.length - 1;
-}
-
 let speedIndicatorTimer = null;
 
 function flashPlyrControls() {
-    document.querySelector('#modalVideoContainer .plyr')
-        ?.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, cancelable: true }));
-}
-function showSpeedIndicator(speed) {
-    const el = document.getElementById('speedIndicator');
-    el.textContent = speed + '×';
-    el.classList.add('visible');
-    clearTimeout(speedIndicatorTimer);
-    speedIndicatorTimer = setTimeout(() => el.classList.remove('visible'), 800);
-}
-
-// Single global modal instance — never re-create, avoids stacked backdrops on navigation
-const videoModalEl = document.getElementById('videoModal');
-const videoBootstrapModal = new bootstrap.Modal(videoModalEl, { keyboard: false });
-const videoModalContainer = document.getElementById('modalVideoContainer');
-
-const speedIndicatorEl = document.getElementById('speedIndicator');
-
-videoModalEl.addEventListener('hidden.bs.modal', () => {
-    if (currentPlyrInstance) {
-        currentPlyrInstance.pause();
-        currentPlyrInstance.destroy();
-        currentPlyrInstance = null;
+    const plyrEl = document.querySelector('.fancybox__content .plyr');
+    if (plyrEl) {
+        plyrEl.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, cancelable: true }));
     }
-    videoModalContainer.innerHTML = '';
-    videoModalContainer.appendChild(speedIndicatorEl);
-});
+}
+
+function showSpeedIndicator(speed) {
+    let el = document.getElementById('speedIndicator');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'speedIndicator';
+        el.style.cssText = 'position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.6); color:#fff; font-size:1.4rem; font-weight:600; padding:10px 18px; border-radius:6px; pointer-events:none; opacity:0; transition:opacity 0.15s ease; z-index:1070; white-space:nowrap;';
+        document.body.appendChild(el);
+    }
+    el.textContent = speed + '×';
+    el.style.opacity = '1';
+    clearTimeout(speedIndicatorTimer);
+    speedIndicatorTimer = setTimeout(() => el.style.opacity = '0', 800);
+}
+
+function buildSidebarHtml(card) {
+    const channel = card.dataset.channel;
+    const datetime = card.querySelector('.post-datetime')?.dataset.datetime;
+    const dateStr = datetime ? formatDateTimeFull(datetime) : '';
+    const text = (card.dataset.text || '').replace(/https?:\/\/t\.me\/\S+/g, '').trim();
+    const link = card.dataset.link;
+    const views = Number(card.dataset.views||0).toLocaleString();
+    const forwards = Number(card.dataset.forwards||0).toLocaleString();
+    const replies = Number(card.dataset.replies||0).toLocaleString();
+    
+    const prevDisabled = currentModalIndex === 0 ? 'disabled' : '';
+    const nextDisabled = currentModalIndex === allCards.length - 1 ? 'disabled' : '';
+    
+    return `
+        <div class="sidebar-content p-3 d-flex flex-column" style="color: black; background: white; height: 100%; overflow-y: auto;">
+            <div class="d-flex align-items-center mb-3">
+                <div style="width:40px;height:40px;background:#ccc;border-radius:50%;" class="me-2"></div>
+                <div>
+                    <strong>${channel}</strong><br>
+                    <small class="text-muted">${dateStr}</small>
+                </div>
+            </div>
+            <div class="mb-3 d-flex gap-2 text-muted" style="font-size: 0.9em;">
+                <span>👁️ ${views}</span>
+                <span>↪️ ${forwards}</span>
+                <span>💬 ${replies}</span>
+            </div>
+            <div class="mb-3 flex-grow-1" dir="auto" style="white-space: pre-wrap; word-break: break-word;">${text}</div>
+            <div class="mt-3">
+                <a href="${link}" target="_blank" class="btn btn-primary btn-sm w-100 mb-2">
+                    <i class="bi bi-telegram"></i> Open in Telegram
+                </a>
+                <div class="d-flex justify-content-between">
+                    <button class="btn btn-outline-secondary btn-sm flex-grow-1 me-1" onclick="navigatePost(-1)" id="fancyPrevBtn" ${prevDisabled}>Prev</button>
+                    <button class="btn btn-outline-secondary btn-sm flex-grow-1 ms-1" onclick="navigatePost(1)" id="fancyNextBtn" ${nextDisabled}>Next</button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function fancyboxOptions(onDestroy) {
+    return {
+        plugins: [window.Sidebar],
+        Sidebar: { position: "right", width: 350 },
+        keyboard: false,
+        dragToClose: false,
+        closeButton: false,
+        mainStyle: {
+            "--f-html-bg": "transparent",
+            "--f-carousel-slide-bg": "transparent",
+            "--f-html-padding": "0",
+            "--fancybox-backdrop-bg": "rgba(0,0,0,0.75)",
+            "--sidebar-width": "350px",
+        },
+        on: onDestroy ? { destroy: onDestroy } : {},
+    };
+}
 
 async function showVideoModal(card, videoData) {
     currentModalCard = card;
-    populateModalSidebar(card);
+    const sidebarHtml = buildSidebarHtml(card);
 
-    if (currentPlyrInstance) {
-        currentPlyrInstance.destroy();
-        currentPlyrInstance = null;
-    }
-    videoModalContainer.innerHTML = '';
-    videoModalContainer.appendChild(speedIndicatorEl);
-
+    let mediaHtml = '';
     if (videoData.video) {
-        const video = document.createElement('video');
-        video.src = videoData.video;
-        video.autoplay = true;
-        if (videoData.thumbnail) video.poster = videoData.thumbnail;
-        videoModalContainer.appendChild(video);
-
-        currentPlyrInstance = new Plyr(video, {
-            controls: ['play', 'progress', 'current-time', 'duration', 'mute', 'volume', 'settings', 'fullscreen'],
-            settings: ['speed'],
-            speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 2] },
-            keyboard: { focused: false, global: false },
-            tooltips: { controls: true, seek: true },
-            fullscreen: { enabled: true, fallback: false, iosNative: false },
-        });
-
-        currentPlyrInstance.on('ready', () => { currentPlyrInstance.speed = 1; });
-        currentPlyrInstance.on('ratechange', () => showSpeedIndicator(currentPlyrInstance.speed));
+        mediaHtml = `
+            <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center;">
+                <video id="player" playsinline controls autoplay ${videoData.thumbnail ? 'poster="'+videoData.thumbnail+'"' : ''} style="max-height:100%; max-width:100%;">
+                    <source src="${videoData.video}" type="video/mp4" />
+                </video>
+            </div>
+        `;
     } else {
         const msgId = card.dataset.messageId || card.dataset.post;
         const singleParam = card.dataset.messageId ? '&single=1' : '';
-        videoModalContainer.innerHTML = `<iframe src="https://t.me/${card.dataset.channel}/${msgId}?embed=1&mode=tme${singleParam}"
-            frameborder="0" scrolling="no"></iframe>`;
+        mediaHtml = `<iframe src="https://t.me/${card.dataset.channel}/${msgId}?embed=1&mode=tme${singleParam}" frameborder="0" scrolling="no" style="width:100%; height:100dvh; border:none; display:block;"></iframe>`;
     }
-    videoBootstrapModal.show();
+
+    if (window.Fancybox && window.Fancybox.getInstance()) window.Fancybox.close();
+
+    window.Fancybox.show([{ html: mediaHtml, type: "html", caption: sidebarHtml }], fancyboxOptions(() => {
+        if (currentPlyrInstance) { currentPlyrInstance.destroy(); currentPlyrInstance = null; }
+    }));
+
+    const checkReady = setInterval(() => {
+        const videoEl = document.querySelector('#player');
+        if (videoEl && !currentPlyrInstance) {
+            clearInterval(checkReady);
+            currentPlyrInstance = new window.Plyr(videoEl, {
+                controls: ['play', 'progress', 'current-time', 'duration', 'mute', 'volume', 'settings', 'fullscreen'],
+                settings: ['speed'],
+                speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 2] },
+                keyboard: { focused: false, global: false },
+                fullscreen: { enabled: true, fallback: false, iosNative: false }
+            });
+            currentPlyrInstance.on('ready', () => { currentPlyrInstance.speed = 1; });
+            currentPlyrInstance.on('ratechange', () => showSpeedIndicator(currentPlyrInstance.speed));
+        }
+    }, 100);
 }
 
 function showPhotoModal(card, mediaData) {
     currentModalCard = card;
-    populateModalSidebar(card);
+    const sidebarHtml = buildSidebarHtml(card);
 
-    if (currentPlyrInstance) {
-        currentPlyrInstance.destroy();
-        currentPlyrInstance = null;
+    if (window.Fancybox && window.Fancybox.getInstance()) window.Fancybox.close();
+
+    window.Fancybox.show([{ src: mediaData.photo || '', type: "image", caption: sidebarHtml }], fancyboxOptions());
+
+}
+
+function updateOpenModal(card, mediaType, rawData) {
+    currentModalCard = card;
+    const sidebarEl = document.querySelector('.fancybox__sidebar');
+    if (sidebarEl) sidebarEl.innerHTML = buildSidebarHtml(card);
+
+    const albumIndex = parseInt(card.dataset.albumIndex || '0');
+
+    if (mediaType === 'photo') {
+        const photoUrl = rawData.photo || (rawData.photos && rawData.photos[albumIndex]);
+        const imgEl = document.querySelector('.fancybox__slide img');
+        if (imgEl) imgEl.src = photoUrl || '';
+    } else {
+        const videoUrl = rawData.video || (rawData.videos && rawData.videos[albumIndex]);
+        if (currentPlyrInstance && videoUrl) {
+            currentPlyrInstance.source = { type: 'video', sources: [{ src: videoUrl, type: 'video/mp4' }] };
+        } else if (!currentPlyrInstance) {
+            // Plyr not yet ready — update the raw <video> src directly
+            const videoEl = document.querySelector('.fancybox__slide video');
+            if (videoEl) { videoEl.src = videoUrl || ''; videoEl.play().catch(() => {}); }
+        }
     }
-    videoModalContainer.innerHTML = '';
-    videoModalContainer.appendChild(speedIndicatorEl);
-    const img = document.createElement('img');
-    img.src = mediaData.photo || '';
-    videoModalContainer.appendChild(img);
-    videoBootstrapModal.show();
 }
 
 async function navigatePost(direction) {
@@ -619,22 +456,25 @@ async function navigatePost(direction) {
     const mt = newCard.dataset.mediaType;
     const messageId = newCard.dataset.messageId || null;
     const rawData = await getVideoUrl(newCard.dataset.channel, newCard.dataset.post, mt, messageId);
-    if (mt === 'photo') {
-        const idx = parseInt(newCard.dataset.albumIndex || '0');
-        const photoUrl = rawData.photo || (rawData.photos && rawData.photos[idx]);
-        showPhotoModal(newCard, { ...rawData, photo: photoUrl });
+
+    if (window.Fancybox && window.Fancybox.getInstance()) {
+        updateOpenModal(newCard, mt, rawData);
     } else {
-        const idx = parseInt(newCard.dataset.albumIndex || '0');
-        const videoUrl = rawData.video || (rawData.videos && rawData.videos[idx]);
-        showVideoModal(newCard, { ...rawData, video: videoUrl, videos: [videoUrl] });
+        const albumIndex = parseInt(newCard.dataset.albumIndex || '0');
+        if (mt === 'photo') {
+            const photoUrl = rawData.photo || (rawData.photos && rawData.photos[albumIndex]);
+            showPhotoModal(newCard, { ...rawData, photo: photoUrl });
+        } else {
+            const videoUrl = rawData.video || (rawData.videos && rawData.videos[albumIndex]);
+            showVideoModal(newCard, { ...rawData, video: videoUrl, videos: [videoUrl] });
+        }
     }
 }
 
-document.getElementById('prevPostBtn').addEventListener('click', () => navigatePost(-1));
-document.getElementById('nextPostBtn').addEventListener('click', () => navigatePost(1));
+
 
 document.addEventListener('keydown', (e) => {
-    if (!videoModalEl.classList.contains('show')) return;
+    if (!window.Fancybox || !window.Fancybox.getInstance()) return;
     const p = currentPlyrInstance;
     const speedOptions = [0.5, 0.75, 1, 1.25, 1.5, 2];
     switch (e.key) {
@@ -655,10 +495,10 @@ document.addEventListener('keydown', (e) => {
 
 document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
-    if (!videoModalEl.classList.contains('show')) return;
+    if (!window.Fancybox || !window.Fancybox.getInstance()) return;
     e.preventDefault();
     e.stopPropagation();
-    videoBootstrapModal.hide();
+    window.Fancybox.close();
 }, true);
 
 // ====== HTMX lifecycle hooks ======
